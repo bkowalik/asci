@@ -47,7 +47,7 @@ class Parser extends JavaTokenParsers {
     case '-' => Minus
   }
 
-  def number: Parser[Num[_]] = opt(sign) ~ (floating | integer) ^^ {
+  def number: Parser[Num[AnyVal]] = opt(sign) ~ (floating | integer) ^^ {
     case s ~ (num: Int) => IntegerNum(applySign(s, num))
     case s ~ (num: Float) => FloatingNum(applySign(s, num))
   }

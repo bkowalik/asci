@@ -1,6 +1,7 @@
 package com.asci
 
 import org.scalatest._
+import com.asci.Constant.IntegerNum
 
 class ParserTest extends FlatSpec with Matchers {
   behavior of "parser"
@@ -87,15 +88,29 @@ class ParserTest extends FlatSpec with Matchers {
 
   it should "parse num with sign" in new ParserSupplier {
     val first = parser.parseAll(parser.number, "+2")
-    first shouldBe a [parser.Success[_]]
-//    first.get.value shouldBe a [Int]
+    first shouldBe a [parser.Success[IntegerNum]]
+    first.get.value shouldBe a [Int]
     first.get.value should equal(2)
 
-    parser.parseAll(parser.number, "-5") shouldBe a [parser.Success[_]]
-    parser.parseAll(parser.number, "7") shouldBe a [parser.Success[_]]
-    parser.parseAll(parser.number, "+22.56") shouldBe a [parser.Success[_]]
-    parser.parseAll(parser.number, "-1.34") shouldBe a [parser.Success[_]]
-    parser.parseAll(parser.number, "2.88") shouldBe a [parser.Success[_]]
+    val second = parser.parseAll(parser.number, "-5")
+    second shouldBe a [parser.Success[_]]
+    second.get.value should equal(-5)
+
+    val third = parser.parseAll(parser.number, "7")
+    third shouldBe a [parser.Success[_]]
+    third.get.value should equal(7)
+
+    val fourth = parser.parseAll(parser.number, "+22.56")
+    fourth shouldBe a [parser.Success[_]]
+    fourth.get.value should equal(22.56f)
+
+    val fifth = parser.parseAll(parser.number, "-1.34")
+    fifth shouldBe a [parser.Success[_]]
+    fifth.get.value should equal(-1.34f)
+
+    val sixth = parser.parseAll(parser.number, "2.88")
+    sixth shouldBe a [parser.Success[_]]
+    sixth.get.value should equal(2.88f)
 
     parser.parseAll(parser.number, "+as") should not be an [parser.Success[_]]
     parser.parseAll(parser.number, "-as.dd") should not be an [parser.Success[_]]
@@ -114,7 +129,9 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   it should "parse character" in new ParserSupplier {
-    parser.parseAll(parser.character, "#\\s") shouldBe a [parser.Success[_]]
+    val chr = parser.parseAll(parser.character, "#\\s")
+    chr shouldBe a [parser.Success[_]]
+    chr.get.c should equal('s')
   }
 
   it should "parse constant" in new ParserSupplier {
