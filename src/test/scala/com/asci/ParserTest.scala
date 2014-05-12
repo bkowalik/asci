@@ -83,6 +83,23 @@ class ParserTest extends FlatSpec with Matchers {
     parser.parseAll(parser.constant, "#\\s") shouldBe a [parser.Success[_]]
     parser.parseAll(parser.constant, "2.22") shouldBe a [parser.Success[_]]
   }
+
+  it should "parse list" in new ParserSupplier {
+    parser.parseAll(parser.list, "(\tdefine %%%  6)") shouldBe a [parser.Success[_]]
+  }
+
+  it should "parse dotted list" in new ParserSupplier {
+    parser.parseAll(parser.dottedList, "(\t1 2     3 \t. 4)") shouldBe a [parser.Success[_]]
+  }
+
+  it should "parse quotation" in new ParserSupplier {
+    parser.parseAll(parser.quotation, "'   \t1") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.quotation, "' (1 2 3 4)") shouldBe a [parser.Success[_]]
+  }
+
+  it should "parse nested lists" in new ParserSupplier {
+    parser.parseAll(parser.list, "(define x (if (= x 0) (3) (/ 20 4)))") shouldBe a [parser.Success[_]]
+  }
 }
 
 object ParserTest {
@@ -97,6 +114,13 @@ object ParserTest {
   case class CharacterConstant(c: Char) extends Constant
   case class BooleanConstant(b: Boolean) extends Constant
 
+  case class ListExpr(l: List[Expr]) extends Expr
+  case class DottedList(l: List[Expr], e: Expr) extends Expr
+
+  case class Quotation(q: Expr) extends Expr
+
+  case class Atom(f: String) extends Expr
+
   sealed abstract class Sign
   case object Plus extends Sign
   case object Minus extends Sign
@@ -105,17 +129,21 @@ object ParserTest {
 
     override val skipWhitespace = false
 
-    def read(input: String): ParseResult[_] = parseAll(scheme, input)
+    def read(input: String): ParseResult[Expr] = parseAll(scheme, input)
 
-    def scheme: Parser[_] = identifier
+    def scheme: Parser[Expr] = identifier
 
-    def identifier: Parser[_] = (letter | symbol) ~ rep(letter | digit | symbol)
+    def identifier: Parser[Expr] = (letter | initialSymbol) ~ rep(letter | digit | symbol) ^^ {
+      case foo ~ bar => Atom(s"$foo$bar")
+    }
 
     def letter: Parser[Char] = oneOf("abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ")
 
     def oneOf(a: String): Parser[Char] = (a.toList.tail map elem).foldLeft(elem(a.toList.head)) {case (acc, c) => acc | c}
 
-    def symbol: Parser[Char] = oneOf("!$%&*/:<=>?~_^.+-")
+    def symbol: Parser[Char] = initialSymbol | oneOf(".+-")
+
+    def initialSymbol: Parser[Char] = oneOf("!$%&*/:<=>?~_^")
 
     def digit: Parser[Char] = oneOf("0123456789")
 
@@ -156,5 +184,19 @@ object ParserTest {
         case Minus => num.negate(n)
       } getOrElse(n)
     }
+
+    def expression: Parser[Expr] = constant | identifier | list
+
+    def list: Parser[ListExpr] = lexeme(elem('(')) ~> (lexeme(expression)).* <~ lexeme(elem(')')) ^^(ListExpr(_))
+
+    private[asci] def lexeme[T](p: Parser[T]): Parser[T] = p <~ opt(whitespace)
+
+    private[asci] def whitespace = """[ \t]+""".r
+
+    def dottedList: Parser[DottedList] = lexeme(elem('(')) ~> rep1(lexeme(expression)) ~ lexeme(elem('.')) ~ lexeme(expression) <~ lexeme(elem(')')) ^^ {
+      case exprs ~ _ ~ expr => DottedList(exprs, expr)
+    }
+
+    def quotation: Parser[Quotation] = lexeme(elem('\'')) ~> lexeme(expression) ^^(Quotation(_))
   }
 }
