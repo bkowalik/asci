@@ -63,15 +63,39 @@ class ParserTest extends FlatSpec with Matchers {
     parser.parseAll(parser.number, "-1.34") shouldBe a [parser.Success[_]]
     parser.parseAll(parser.number, "2.88") shouldBe a [parser.Success[_]]
   }
+
+  it should "parse string character" in new ParserSupplier {
+    parser.parseAll(parser.stringLiteral, "\"\\\"\"") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.stringLiteral, "\"\\\\\"") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.stringLiteral, "\"f\"") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.stringLiteral, "\"6\"") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.stringLiteral, "\"*\"") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.stringLiteral, "\"\"\"") should not be an [parser.Success[_]]
+    parser.parseAll(parser.stringLiteral, "\"\\\"") should not be an [parser.Success[_]]
+  }
+
+  it should "parse character" in new ParserSupplier {
+    parser.parseAll(parser.character, "#\\s") shouldBe a [parser.Success[_]]
+  }
+
+  it should "parse constant" in new ParserSupplier {
+    parser.parseAll(parser.constant, "9") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.constant, "#\\s") shouldBe a [parser.Success[_]]
+    parser.parseAll(parser.constant, "2.22") shouldBe a [parser.Success[_]]
+  }
 }
 
 object ParserTest {
   sealed abstract class Expr
+  sealed abstract class Constant extends Expr
 
-  case class Constant() extends Expr
-  case class Num() extends Constant
+  sealed abstract class Num extends Constant
   case class IntegerNum(i: Int) extends Num
   case class FloatingNum(f: Float) extends Num
+
+  case class StringConstant(str: String) extends Constant
+  case class CharacterConstant(c: Char) extends Constant
+  case class BooleanConstant(b: Boolean) extends Constant
 
   sealed abstract class Sign
   case object Plus extends Sign
@@ -103,9 +127,9 @@ object ParserTest {
       case foo => foo.mkString.toInt
     }
 
-    def boolean: Parser[Boolean] = elem('#') ~> oneOf("tf") ^^ {
-      case 't' => true
-      case 'f' => false
+    def boolean: Parser[BooleanConstant] = elem('#') ~> oneOf("tf") ^^ {
+      case 't' => BooleanConstant(true)
+      case 'f' => BooleanConstant(false)
     }
 
     def sign: Parser[Sign] = oneOf("+-") ^^ {
@@ -114,10 +138,23 @@ object ParserTest {
     }
 
     def number: Parser[Num] = opt(sign) ~ (floating | integer) ^^ {
-      case s ~ num => num match {
-        case n: Float => ???
-        case n: Int => ???
-      }
+      case s ~ (num: Int) => IntegerNum(applySign(s, num))
+      case s ~ (num: Float) => FloatingNum(applySign(s, num))
+    }
+
+    def character: Parser[CharacterConstant] = (elem('#') ~ elem('\\')) ~> ".".r ^^ {
+      case str => CharacterConstant(str.charAt(0))
+    }
+
+    def constant: Parser[Constant] = boolean | number | character | string
+
+    def string: Parser[StringConstant] = stringLiteral  ^^(StringConstant(_))
+
+    private[asci] def applySign[T](sign: Option[Sign], n: T)(implicit num: Numeric[T]): T = {
+      sign.map{
+        case Plus => n
+        case Minus => num.negate(n)
+      } getOrElse(n)
     }
   }
 }
