@@ -1,5 +1,7 @@
 package com.asci
 
+import scalaz._
+
 sealed abstract class Expr
 
 object Expr {
@@ -27,3 +29,19 @@ object Constant {
 sealed abstract class Sign
 case object Plus extends Sign
 case object Minus extends Sign
+
+object ShowExpr extends Show[Expr] {
+  import Expr._
+  import Constant._
+  override def shows(e: Expr): String = e match {
+    case ListExpr(l)          => "(" + l.map(shows).mkString(" ") + ")"
+    case DottedList(l, e)     => "(" + l.map(shows).mkString(" ") + " . " + shows(e) + ")"
+    case Quotation(e)         => "'" + shows(e)
+    case Atom(s)              => s
+    case IntegerNum(i)        => i.toString
+    case FloatingNum(f)       => f.toString
+    case StringConstant(s)    => "\"" + s + "\""
+    case CharacterConstant(c) => "#\\" + c
+    case BooleanConstant(b)   => if (b) "#t" else "#f"
+  }
+}
