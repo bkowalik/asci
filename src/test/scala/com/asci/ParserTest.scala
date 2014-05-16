@@ -156,4 +156,10 @@ class ParserTest extends FlatSpec with Matchers {
   it should "parse nested lists" in new ParserSupplier {
     parser.parseAll(parser.list, "(define x (if (= x 0) (3) (/ 20 4)))") shouldBe a [parser.Success[_]]
   }
+
+  it should "parse dotted in proper" in new ParserSupplier {
+    parser.read("((#f . 371716386))") shouldBe a [parser.Success[_]]
+    parser.read("((1 . (a<c< . \"t\")))") shouldBe a [parser.Success[_]]
+    parser.read("((/r . 954462.6) . (825951.06 . vv))") shouldBe a [parser.Success[_]]
+  }
 }
