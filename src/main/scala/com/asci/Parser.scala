@@ -58,7 +58,10 @@ class Parser extends JavaTokenParsers {
 
   def constant: Parser[Constant] = boolean | number | character | string
 
-  def string: Parser[StringConstant] = stringLiteral  ^^(StringConstant(_))
+  def string: Parser[StringConstant] = stringLiteral ^^ { s =>
+    val foo = s.substring(1, s.size - 1) // omit ""
+    StringConstant(foo)
+  }
 
   private[asci] def applySign[T](sign: Option[Sign], n: T)(implicit num: Numeric[T]): T = {
     sign.map{
