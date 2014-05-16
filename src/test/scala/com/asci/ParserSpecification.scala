@@ -10,7 +10,7 @@ object ParserSpecification extends Properties("Parser") {
 
   implicit val gen: Arbitrary[Expr] = Arbitrary(expr)
 
-  lazy val p = forAll { (e: Expr) =>
+  property("parse . show = id") = forAll { (e: Expr) =>
     val parser = new Parser
     val pretty = ShowExpr.shows(e)
     parser.read(pretty).getOrElse(List(ListExpr(List()))).head == e

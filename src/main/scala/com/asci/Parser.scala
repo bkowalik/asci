@@ -70,7 +70,7 @@ class Parser extends JavaTokenParsers {
     } getOrElse n
   }
 
-  def expression: Parser[Expr] = constant | identifier | dottedList | list
+  def expression: Parser[Expr] = quotation | constant | identifier | dottedList | list
 
   def list: Parser[ListExpr] = lexeme(elem('(')) ~> lexeme(expression).* <~ lexeme(elem(')')) ^^ListExpr
 

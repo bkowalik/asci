@@ -2,6 +2,7 @@ package com.asci
 
 import org.scalatest._
 import com.asci.Constant.IntegerNum
+import com.asci.Expr.{ListExpr, Quotation, Atom}
 
 class ParserTest extends FlatSpec with Matchers {
   behavior of "parser"
@@ -165,5 +166,13 @@ class ParserTest extends FlatSpec with Matchers {
 
   it should "parse real-world example" in new ParserSupplier {
     parser.read("(+ 2 2)") shouldBe a [parser.Success[_]]
+  }
+
+  it should "properly parse quotations" in new ParserSupplier {
+    val result = parser.read("'+")
+    result.get.head should equal(Quotation(Atom("+")))
+
+    val result2 = parser.read("(atom? 'turkey)")
+    result2.get.head should equal(ListExpr(List(Atom("atom?"), Quotation(Atom("turkey")))))
   }
 }
