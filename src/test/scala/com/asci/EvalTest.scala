@@ -14,7 +14,7 @@ class EvalTest extends FlatSpec with Matchers {
       case _ => Left(InvalidArgsNumber(2))
     }
 
-    def add[T](e: Env, args: List[Expr])(implicit num: Numeric[T], f: T => Float): Either[EvalError, (Env, Expr)] = args match {
+    def add[T](e: Env, args: List[Expr])(implicit num: Numeric[T]): Either[EvalError, (Env, Expr)] = args match {
       case a :: as =>
         val evaluated = evalInternal(e, a)
         val sumOfRest = add(e, as)
