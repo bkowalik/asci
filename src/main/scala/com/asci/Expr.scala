@@ -31,21 +31,16 @@ sealed abstract class Constant extends Expr
 
 object Constant {
   //TODO: fix runtime strict typing and uncomment proper comments
-  sealed abstract class Num[+T : Numeric]() extends Constant {
+  sealed abstract class Num[+T]() extends Constant {
     val value: T
   }
 
   object Num {
-    def +[T : Numeric](a: Num[T], b: Num[T]): Num[T] = a match {
-      case IntegerNum(v1) => b match {
-        case IntegerNum(v2) => IntegerNum(v1 + v2).asInstanceOf[Num[T]]
-        case FloatingNum(v2) => FloatingNum(v1 + v2).asInstanceOf[Num[T]]
-      }
-      case FloatingNum(v1) => b match {
-        case IntegerNum(v2) => FloatingNum(v1 + v2).asInstanceOf[Num[T]]
-        case FloatingNum(v2) => FloatingNum(v1 + v2).asInstanceOf[Num[T]]
-      }
-    }
+    def +[T](a: Num[T], b: Num[T])(implicit f: Numeric[T]): Num[T] = Num[T]{f.plus(a.value, b.value)}
+
+    def apply[T](a: T): Num[T] = new Num[T] {override val value = a}
+
+    def -[T](a: Num[T], b: Num[T])(implicit f: Numeric[T]): Num[T] = Num[T]{f.minus(a.value, b.value)}
   }
 
   case class IntegerNum(value: Int) extends Num[Int]

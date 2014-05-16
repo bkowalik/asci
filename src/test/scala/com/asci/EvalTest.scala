@@ -14,19 +14,14 @@ class EvalTest extends FlatSpec with Matchers {
       case _ => Left(InvalidArgsNumber(2))
     }
 
-    def add[T](e: Env, args: List[Expr])(implicit num: Numeric[T], f: T => Float): Either[EvalError, (Env, Expr)] = args match {
+    def add[T](e: Env, args: List[Expr])(implicit f: Numeric[T]): Either[EvalError, (Env, Expr)] = args match {
       case a :: as =>
         val evaluated = evalInternal(e, a)
         val sumOfRest = add(e, as)
-        try {
-          sumOfRest.right.get._2 match {
-            case v: Num[T] => evaluated.right.get._2 match {
-              case v2: Num[T] => Right((e, Num.+(v, v2)))
-            }
+        sumOfRest.right.get._2 match {
+          case v: Num[T] => evaluated.right.get._2 match {
+            case v2: Num[T] => Right((e, Num.+(v, v2)))
           }
-        } catch {
-          // FIXME: specify exception type
-          case e: Exception => Left(TypeMismatch("number", "FIXME unknown type"))
         }
       case Nil => Right((e, IntegerNum(0)))
       case _ => Left(OtherError("FIXME: unknown error in add"))
