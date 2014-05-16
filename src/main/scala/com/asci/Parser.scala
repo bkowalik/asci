@@ -11,9 +11,9 @@ class Parser extends JavaTokenParsers {
 
   override val skipWhitespace = false
 
-  def read(input: String): ParseResult[Expr] = parseAll(scheme, input)
+  def read(input: String): ParseResult[List[Expr]] = parseAll(scheme, input)
 
-  def scheme: Parser[Expr] = identifier
+  def scheme: Parser[List[Expr]] = rep(expression)
 
   def identifier: Parser[Expr] = (letter | initialSymbol) ~ rep(letter | digit | symbol) ^^ {
     case foo ~ bar => Atom(s"$foo$bar")
