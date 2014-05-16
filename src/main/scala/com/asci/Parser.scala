@@ -70,7 +70,7 @@ class Parser extends JavaTokenParsers {
     } getOrElse(n)
   }
 
-  def expression: Parser[Expr] = constant | identifier | list
+  def expression: Parser[Expr] = constant | identifier | dottedList | list
 
   def list: Parser[ListExpr] = lexeme(elem('(')) ~> (lexeme(expression)).* <~ lexeme(elem(')')) ^^(ListExpr(_))
 
@@ -78,8 +78,8 @@ class Parser extends JavaTokenParsers {
 
   private[asci] def whitespace = """[ \t]+""".r
 
-  def dottedList: Parser[DottedList] = lexeme(elem('(')) ~> rep1(lexeme(expression)) ~ lexeme(elem('.')) ~ lexeme(expression) <~ lexeme(elem(')')) ^^ {
-    case exprs ~ _ ~ expr => DottedList(exprs, expr)
+  def dottedList: Parser[DottedList] = lexeme(elem('(')) ~> rep1(lexeme(expression)) ~ elem('.') ~ whitespace ~ lexeme(expression) <~ lexeme(elem(')')) ^^ {
+    case exprs ~ _ ~ _ ~ expr => DottedList(exprs, expr)
   }
 
   def quotation: Parser[Quotation] = lexeme(elem('\'')) ~> lexeme(expression) ^^(Quotation(_))
