@@ -1,8 +1,15 @@
 package com.asci
 
 import org.scalatest.{FlatSpec, Matchers}
-import com.asci.Expr.{ExprFun, ListExpr, Atom}
-import com.asci.Constant.{FloatingNum, Num, IntegerNum}
+import com.asci.Expr._
+import com.asci.Constant.Num
+import com.asci.Expr.Atom
+import scala.Some
+import com.asci.Constant.FloatingNum
+import com.asci.Expr.ExprFun
+import com.asci.Expr.Quotation
+import com.asci.Expr.ListExpr
+import com.asci.Constant.IntegerNum
 
 class EvalTest extends FlatSpec with Matchers {
   behavior of "eval"
@@ -32,8 +39,24 @@ class EvalTest extends FlatSpec with Matchers {
       case _ => Left(OtherError("FIXME: unknown error in add"))
     }
 
+    def car(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
+      case a :: Nil =>
+        val evaluated = evalInternal(e, a)
+        try {
+          evaluated.right.get._2 match {
+            case ListExpr(head :: _) => Right((e, head))
+            case DottedList(head :: _, _) => Right((e, head))
+          }
+        } catch {
+          // FIXME
+          case e: Exception => Left(TypeMismatch("list", "unknown"))
+        }
+      case _ => Left(OtherError("Unknown error in car"))
+    }
+
     private val initialEnv = Map("define" -> ExprFun(define),
-                                 "+" -> ExprFun(add[Float]))
+                                 "+" -> ExprFun(add[Float]),
+                                 "car" -> ExprFun(car))
 
     val env = new Env(initialEnv)
   }
@@ -83,6 +106,22 @@ class EvalTest extends FlatSpec with Matchers {
     result.right.get._2 should equal(IntegerNum(1+2+3+4))
   }
 
+  it should "car proper list" in new EnvSupplier {
+    val result = eval(env, "(car '(1 2 3))")
+    result.right.get._2 should equal(IntegerNum(1))
+  }
+
+  it should "car dotted list" in new EnvSupplier {
+    val result = eval(env, "(car '(1 2 . 3))")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(IntegerNum(1))
+  }
+
+  it should "fail on car of empty list" in new EnvSupplier {
+    val result = eval(env, "(car '())")
+    result should not be an [Right[_,_]]
+  }
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
 
@@ -98,6 +137,7 @@ class EvalTest extends FlatSpec with Matchers {
     case ListExpr(Atom(f) :: args) => apply(env, f, args)
     case v@IntegerNum(_) => Right((env, v))
     case v@FloatingNum(_) => Right((env, v))
+    case Quotation(q) => Right((env, q))
     case _ => Left(NotImplemented("foo"))
   }
 
