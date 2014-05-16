@@ -19,7 +19,7 @@ class Parser extends JavaTokenParsers {
     case foo ~ bar => Atom(bar.mkString.+:(foo))
   }
 
-  def letter: Parser[Char] = oneOf("abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ")
+  def letter: Parser[Char] = oneOf("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
   def oneOf(a: String): Parser[Char] = (a.toList.tail map elem).foldLeft(elem(a.toList.head)) {case (acc, c) => acc | c}
 
