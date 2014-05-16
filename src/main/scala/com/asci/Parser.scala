@@ -67,12 +67,12 @@ class Parser extends JavaTokenParsers {
     sign.map{
       case Plus => n
       case Minus => num.negate(n)
-    } getOrElse(n)
+    } getOrElse n
   }
 
   def expression: Parser[Expr] = constant | identifier | dottedList | list
 
-  def list: Parser[ListExpr] = lexeme(elem('(')) ~> (lexeme(expression)).* <~ lexeme(elem(')')) ^^(ListExpr(_))
+  def list: Parser[ListExpr] = lexeme(elem('(')) ~> lexeme(expression).* <~ lexeme(elem(')')) ^^ListExpr
 
   private[asci] def lexeme[T](p: Parser[T]): Parser[T] = p <~ opt(whitespace)
 
@@ -82,5 +82,5 @@ class Parser extends JavaTokenParsers {
     case exprs ~ _ ~ _ ~ expr => DottedList(exprs, expr)
   }
 
-  def quotation: Parser[Quotation] = lexeme(elem('\'')) ~> lexeme(expression) ^^(Quotation(_))
+  def quotation: Parser[Quotation] = lexeme(elem('\'')) ~> lexeme(expression) ^^Quotation
 }
