@@ -9,6 +9,7 @@ object Expr {
   case class DottedList(l: List[Expr], e: Expr) extends Expr
   case class Quotation(q: Expr) extends Expr
   case class Atom(f: String) extends Expr
+  case class ExprFun(f: (Env, List[Expr]) => Either[EvalError, (Env, Expr)]) extends Expr
 
   implicit object ShowExpr extends Show[Expr] {
     import Constant._
