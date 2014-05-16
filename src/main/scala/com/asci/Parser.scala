@@ -16,7 +16,7 @@ class Parser extends JavaTokenParsers {
   def scheme: Parser[List[Expr]] = rep(expression)
 
   def identifier: Parser[Expr] = (letter | initialSymbol) ~ rep(letter | digit | symbol) ^^ {
-    case foo ~ bar => Atom(s"$foo$bar")
+    case foo ~ bar => Atom(bar.mkString.+:(foo))
   }
 
   def letter: Parser[Char] = oneOf("abcdefghijklmnopqrstuwxyzABCDEFGHIJKLMNOPQRSTUWXYZ")
