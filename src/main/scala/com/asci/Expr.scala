@@ -31,9 +31,23 @@ sealed abstract class Constant extends Expr
 
 object Constant {
   //TODO: fix runtime strict typing and uncomment proper comments
-  sealed abstract class Num[+T]()(implicit num: Numeric[T]) extends Constant{
+  sealed abstract class Num[+T : Numeric]() extends Constant {
     val value: T
   }
+
+  object Num {
+    def +[T : Numeric](a: Num[T], b: Num[T]): Num[T] = a match {
+      case IntegerNum(v1) => b match {
+        case IntegerNum(v2) => IntegerNum(v1 + v2).asInstanceOf[Num[T]]
+        case FloatingNum(v2) => FloatingNum(v1 + v2).asInstanceOf[Num[T]]
+      }
+      case FloatingNum(v1) => b match {
+        case IntegerNum(v2) => FloatingNum(v1 + v2).asInstanceOf[Num[T]]
+        case FloatingNum(v2) => FloatingNum(v1 + v2).asInstanceOf[Num[T]]
+      }
+    }
+  }
+
   case class IntegerNum(value: Int) extends Num[Int]
   case class FloatingNum(value: Float) extends Num[Float]
 

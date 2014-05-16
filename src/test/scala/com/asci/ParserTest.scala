@@ -162,4 +162,8 @@ class ParserTest extends FlatSpec with Matchers {
     parser.read("((1 . (a<c< . \"t\")))") shouldBe a [parser.Success[_]]
     parser.read("((/r . 954462.6) . (825951.06 . vv))") shouldBe a [parser.Success[_]]
   }
+
+  it should "parse real-world example" in new ParserSupplier {
+    parser.read("(+ 2 2)") shouldBe a [parser.Success[_]]
+  }
 }

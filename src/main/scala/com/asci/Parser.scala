@@ -23,9 +23,9 @@ class Parser extends JavaTokenParsers {
 
   def oneOf(a: String): Parser[Char] = (a.toList.tail map elem).foldLeft(elem(a.toList.head)) {case (acc, c) => acc | c}
 
-  def symbol: Parser[Char] = initialSymbol | oneOf(".+-")
+  def symbol: Parser[Char] = initialSymbol | oneOf(".")
 
-  def initialSymbol: Parser[Char] = oneOf("!$%&*/:<=>?~_^")
+  def initialSymbol: Parser[Char] = oneOf("!$%&*/:<=>?~_^+-")
 
   def digit: Parser[Char] = oneOf("0123456789")
 
