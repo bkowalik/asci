@@ -153,6 +153,12 @@ class EvalTest extends FlatSpec with Matchers {
     result.right.get._2 should equal(StringConstant("bar"))
   }
 
+  it should "work with nested expression for fixed arity function" in new EnvSupplier {
+    val result = eval(env, "(snd 1 (fst 2 3))")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(IntegerNum(2))
+  }
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
 
@@ -189,7 +195,7 @@ class EvalTest extends FlatSpec with Matchers {
   def apply[A, B](env: Env, f: String, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
     env.get(f) match {
       case Some(x: ExprFun) => x.f(env, args)
-      // FIXME: probably needs to evaluate arguments on the go
+      // FIXME: probably needs to evaluate arguments on the go in variable variant
       // FIXME: more type-safety
       // FIXME: allow variable arity implementation for non-associative operations
       case Some(x: FunWrap[A, B]) =>
@@ -197,7 +203,22 @@ class EvalTest extends FlatSpec with Matchers {
         x.arity match {
           case Fixed(i) =>
             args.length match {
-              case j if i == j => Right((env, Expr(f(tupleize(args, i).asInstanceOf[B]))))
+              case j if i == j =>
+                val evaluated: Either[List[EvalError], List[(Env, Expr)]] = args.map({
+                  e => evalInternal(env, e)
+                }).partition(_.isLeft) match {
+                  // WTF Scala? no sequence? really?
+                  case (Nil,  as) => Right(for(Right(i) <- as) yield i)
+                  case (errors, _) => Left(for(Left(s) <- errors) yield s)
+                }
+
+                evaluated match {
+                  case Right(a: List[(Env, Expr)]) =>
+                    val args1: List[Expr] = a.map(_._2)
+                    val args2 = tupleize(args1, i)
+                    Right((env, Expr(f(args2.asInstanceOf[B]))))
+                  case Left(c :: _) => Left(c)
+                }
               case _           => Left(InvalidArgsNumber(i))
             }
           case Variable() =>
