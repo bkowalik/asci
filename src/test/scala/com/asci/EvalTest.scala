@@ -2,24 +2,39 @@ package com.asci
 
 import org.scalatest.{FlatSpec, Matchers}
 import com.asci.Expr._
-import com.asci.Constant.Num
+import com.asci.Constant.{StringConstant, Num, FloatingNum, IntegerNum}
 import com.asci.Expr.Atom
 import scala.Some
-import com.asci.Constant.FloatingNum
 import com.asci.Expr.ExprFun
 import com.asci.Expr.Quotation
 import com.asci.Expr.ListExpr
-import com.asci.Constant.IntegerNum
 
 class EvalTest extends FlatSpec with Matchers {
   behavior of "eval"
 
   trait EnvSupplier {
+
     def define(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
       case Atom(a) :: b :: Nil => Right((e.insert(a, b), b))
       case a :: _ :: Nil => Left(OtherError("Cannot assign to non-identifier"))
       case _ => Left(InvalidArgsNumber(2))
     }
+
+    def concat(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = ??? // {
+//      val fun: FunWrap[List[String], Expr] = FunWrap((a: List[String]) => StringConstant(a.tail.foldLeft(a.head){(a, b) => a + b}))
+//      try {
+//        Right((e, fun.f(args.map {
+//          a => evalInternal(e, a) match {
+//            case Right((_, StringConstant(s))) => s
+//          }
+//        })))
+//      } catch {
+//        case e: Exception => Left(OtherError("Unknown error in concat"))
+//      }
+//    }
+
+    def fst[A](a: Tuple2[A, A]): A = a._1
+    def snd[A](a: Tuple2[A, A]): A = a._2
 
     def add[T](e: Env, args: List[Expr])(implicit num: Numeric[T]): Either[EvalError, (Env, Expr)] = args match {
       case a :: as =>
@@ -56,7 +71,10 @@ class EvalTest extends FlatSpec with Matchers {
 
     private val initialEnv = Map("define" -> ExprFun(define),
                                  "+" -> ExprFun(add[Float]),
-                                 "car" -> ExprFun(car))
+                                 "car" -> ExprFun(car),
+                                 "concat" -> ExprFun(concat),
+                                 "fst" -> FunWrap(fst[Expr], Fixed(2)),
+                                 "snd" -> FunWrap(snd[Expr], Fixed(2)))
 
     val env = new Env(initialEnv)
   }
@@ -122,6 +140,24 @@ class EvalTest extends FlatSpec with Matchers {
     result should not be an [Right[_,_]]
   }
 
+  it should "concat strings" in new EnvSupplier {
+    val result = eval(env, "(concat \"foo\" \"bar\")")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(StringConstant("foobar"))
+  }
+
+  it should "get first tuple element" in new EnvSupplier {
+    val result = eval(env, "(fst \"foo\" \"bar\")")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(StringConstant("foo"))
+  }
+
+  it should "get second tuple element" in new EnvSupplier {
+    val result = eval(env, "(snd \"foo\" \"bar\")")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(StringConstant("bar"))
+  }
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
 
@@ -138,12 +174,38 @@ class EvalTest extends FlatSpec with Matchers {
     case v@IntegerNum(_) => Right((env, v))
     case v@FloatingNum(_) => Right((env, v))
     case Quotation(q) => Right((env, q))
+    case s@StringConstant(_) => Right((env, s))
     case _ => Left(NotImplemented("foo"))
   }
 
-  def apply(env: Env, f: String, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
+  def tupleize1[A](l: List[A]): Tuple1[A] = l match {
+    case a :: Nil => Tuple1(a)
+  }
+
+  def tupleize2[A](l: List[A]): Tuple2[A, A] = l match {
+    case a :: b :: Nil => (a, b)
+  }
+
+  def tupleize[A](l: List[A], n: Int) = n match {
+    case 1 => tupleize1(l)
+    case 2 => tupleize2(l)
+  }
+
+  def apply[A, B](env: Env, f: String, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
     env.get(f) match {
       case Some(x: ExprFun) => x.f(env, args)
+      case Some(x: FunWrap[A, B]) =>
+        val f: Function[B, A] = x.f
+        x.arity match {
+          case Fixed(i) =>
+            args.length match {
+              case j if i == j => Right((env, Expr(f(tupleize(args, i).asInstanceOf[B]))))
+              case _           => Left(InvalidArgsNumber(i))
+            }
+          case Variable() => ???
+            // A ~ Tuple2[_,_]
+
+        }
       case Some(y) => Left(OtherError(s"$f is not a function"))
       case None => Left(UnboundVariable(f))
     }

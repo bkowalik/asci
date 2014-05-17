@@ -5,11 +5,23 @@ import scalaz._
 sealed abstract class Expr
 
 object Expr {
+  import Constant._
+
   case class ListExpr(l: List[Expr]) extends Expr
   case class DottedList(l: List[Expr], e: Expr) extends Expr
   case class Quotation(q: Expr) extends Expr
   case class Atom(f: String) extends Expr
   case class ExprFun(f: (Env, List[Expr]) => Either[EvalError, (Env, Expr)]) extends Expr
+  case class FunWrap[A, B](f: Function[B, A], arity: Arity) extends Expr
+
+  sealed abstract class Arity
+  case class Fixed(i: Int) extends Arity
+  case class Variable()    extends Arity
+
+  def apply[A](a: A): Expr = a match {
+    case e: Expr => e
+    case s: String => StringConstant(s)
+  }
 
   implicit object ShowExpr extends Show[Expr] {
     import Constant._
