@@ -56,6 +56,30 @@ object Constant {
       case FloatingNum(v1) => FloatingNum(v1 + float(b)).asInstanceOf[Num[T]]
     }
 
+    def -[T : Numeric](a: Num[T], b: Num[T]): Num[T] = a match {
+      case IntegerNum(v1) => b match {
+        case IntegerNum(v2) => IntegerNum(v1 - v2).asInstanceOf[Num[T]]
+        case FloatingNum(v2) => FloatingNum(v1 - v2).asInstanceOf[Num[T]]
+      }
+      case FloatingNum(v1) => FloatingNum(v1 - float(b)).asInstanceOf[Num[T]]
+    }
+
+    def *[T : Numeric](a: Num[T], b: Num[T]): Num[T] = a match {
+      case IntegerNum(v1) => b match {
+        case IntegerNum(v2) => IntegerNum(v1 * v2).asInstanceOf[Num[T]]
+        case FloatingNum(v2) => FloatingNum(v1 * v2).asInstanceOf[Num[T]]
+      }
+      case FloatingNum(v1) => FloatingNum(v1 * float(b)).asInstanceOf[Num[T]]
+    }
+
+    def /[T : Numeric](a: Num[T], b: Num[T]): Num[T] = a match {
+      case IntegerNum(v1) => b match {
+        case IntegerNum(v2) => IntegerNum(v1 / v2).asInstanceOf[Num[T]]
+        case FloatingNum(v2) => FloatingNum(v1 / v2).asInstanceOf[Num[T]]
+      }
+      case FloatingNum(v1) => FloatingNum(v1 / float(b)).asInstanceOf[Num[T]]
+    }
+
     def float[T : Numeric](a: Num[T]): Float = a match {
       case IntegerNum(v) => v.toFloat
       case FloatingNum(v) => v

@@ -27,10 +27,6 @@ class EvalTest extends FlatSpec with Matchers {
       case (StringConstant(s1), StringConstant(s2)) => StringConstant(s1 + s2).asInstanceOf[A]
     }
 
-    def add[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
-      case (b: Num[T], c: Num[T]) => Num.+(b, c).asInstanceOf[A]
-    }
-
     def car(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
       case a :: Nil =>
         val evaluated = evalInternal(e, a)
@@ -47,7 +43,10 @@ class EvalTest extends FlatSpec with Matchers {
     }
 
     private val initialEnv = Map("define" -> ExprFun(define),
-                                 "+" -> FunWrap(add[Num[Float], Float], Variable()),
+                                 "+" -> FunWrap(Primitives.add[Num[Float], Float], Variable()),
+                                 "-" -> FunWrap(Primitives.subtract[Num[Float], Float], Variable()),
+                                 "*" -> FunWrap(Primitives.multiply[Num[Float], Float], Variable()),
+                                 "/" -> FunWrap(Primitives.divide[Num[Float], Float], Variable()),
                                  "car" -> ExprFun(car),
                                  "concat" -> FunWrap(concat[StringConstant], Variable()),
                                  "fst" -> FunWrap(fst[Expr], Fixed(2)),
@@ -88,6 +87,12 @@ class EvalTest extends FlatSpec with Matchers {
     val result = eval(env, "(+ 1 3.4 10 4.2 5.4 0.113 124.32)")
     result shouldBe a [Right[_,_]]
     result.right.get._2 should equal(FloatingNum(1 + 3.4f + 10 + 4.2f + 5.4f + 0.113f + 124.32f))
+  }
+
+  it should "sub n mixed numbers" in new EnvSupplier {
+    val result = eval(env, "(- 2.04 5.06 1 923.4451)")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(FloatingNum(2.04f - 5.06f - 1 - 923.4451f))
   }
 
   it should "fail on adding non-numbers" in new EnvSupplier {
