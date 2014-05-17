@@ -20,21 +20,12 @@ class EvalTest extends FlatSpec with Matchers {
       case _ => Left(InvalidArgsNumber(2))
     }
 
-    def concat(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = ??? // {
-//      val fun: FunWrap[List[String], Expr] = FunWrap((a: List[String]) => StringConstant(a.tail.foldLeft(a.head){(a, b) => a + b}))
-//      try {
-//        Right((e, fun.f(args.map {
-//          a => evalInternal(e, a) match {
-//            case Right((_, StringConstant(s))) => s
-//          }
-//        })))
-//      } catch {
-//        case e: Exception => Left(OtherError("Unknown error in concat"))
-//      }
-//    }
+    def fst[A](a: (A, A)): A = a._1
+    def snd[A](a: (A, A)): A = a._2
 
-    def fst[A](a: Tuple2[A, A]): A = a._1
-    def snd[A](a: Tuple2[A, A]): A = a._2
+    def concat[A](a: (A, A)): A = a match {
+      case (StringConstant(s1), StringConstant(s2)) => StringConstant(s1 + s2).asInstanceOf[A]
+    }
 
     def add[T](e: Env, args: List[Expr])(implicit num: Numeric[T]): Either[EvalError, (Env, Expr)] = args match {
       case a :: as =>
@@ -72,7 +63,7 @@ class EvalTest extends FlatSpec with Matchers {
     private val initialEnv = Map("define" -> ExprFun(define),
                                  "+" -> ExprFun(add[Float]),
                                  "car" -> ExprFun(car),
-                                 "concat" -> ExprFun(concat),
+                                 "concat" -> FunWrap(concat[StringConstant], Variable()),
                                  "fst" -> FunWrap(fst[Expr], Fixed(2)),
                                  "snd" -> FunWrap(snd[Expr], Fixed(2)))
 
@@ -150,6 +141,10 @@ class EvalTest extends FlatSpec with Matchers {
     val result = eval(env, "(fst \"foo\" \"bar\")")
     result shouldBe a [Right[_,_]]
     result.right.get._2 should equal(StringConstant("foo"))
+
+    val result2 = eval(env, "(fst 1 2)")
+    result2 shouldBe a [Right[_,_]]
+    result2.right.get._2 should equal(IntegerNum(1))
   }
 
   it should "get second tuple element" in new EnvSupplier {
@@ -194,6 +189,9 @@ class EvalTest extends FlatSpec with Matchers {
   def apply[A, B](env: Env, f: String, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
     env.get(f) match {
       case Some(x: ExprFun) => x.f(env, args)
+      // FIXME: probably needs to evaluate arguments on the go
+      // FIXME: more type-safety
+      // FIXME: allow variable arity implementation for non-associative operations
       case Some(x: FunWrap[A, B]) =>
         val f: Function[B, A] = x.f
         x.arity match {
@@ -202,9 +200,9 @@ class EvalTest extends FlatSpec with Matchers {
               case j if i == j => Right((env, Expr(f(tupleize(args, i).asInstanceOf[B]))))
               case _           => Left(InvalidArgsNumber(i))
             }
-          case Variable() => ???
-            // A ~ Tuple2[_,_]
-
+          case Variable() =>
+            val a = args.tail.foldLeft(args.head) {case (acc: B, v: Expr) => Expr(f((acc, v).asInstanceOf[B])) }
+            Right((env, a))
         }
       case Some(y) => Left(OtherError(s"$f is not a function"))
       case None => Left(UnboundVariable(f))
