@@ -27,19 +27,10 @@ class EvalTest extends FlatSpec with Matchers {
       case (StringConstant(s1), StringConstant(s2)) => StringConstant(s1 + s2).asInstanceOf[A]
     }
 
-    def car(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
-      case a :: Nil =>
-        val evaluated = evalInternal(e, a)
-        try {
-          evaluated.right.get._2 match {
-            case ListExpr(head :: _) => Right((e, head))
-            case DottedList(head :: _, _) => Right((e, head))
-          }
-        } catch {
-          // FIXME
-          case e: Exception => Left(TypeMismatch("list", "unknown"))
-        }
-      case _ => Left(OtherError("Unknown error in car"))
+    def car[A](a: Tuple1[A]): A = a._1 match {
+      case ListExpr(head :: _) => head.asInstanceOf[A]
+      case DottedList(head :: _, _) => head.asInstanceOf[A]
+      case _ => throw TypeMismatch("non-empty list", a.toString)
     }
 
     private val initialEnv = Map("define" -> ExprFun(define),
@@ -47,7 +38,7 @@ class EvalTest extends FlatSpec with Matchers {
                                  "-" -> FunWrap(Primitives.subtract[Num[Float], Float], Variable()),
                                  "*" -> FunWrap(Primitives.multiply[Num[Float], Float], Variable()),
                                  "/" -> FunWrap(Primitives.divide[Num[Float], Float], Variable()),
-                                 "car" -> ExprFun(car),
+                                 "car" -> FunWrap(car[Expr], Fixed(1)),
                                  "concat" -> FunWrap(concat[StringConstant], Variable()),
                                  "fst" -> FunWrap(fst[Expr], Fixed(2)),
                                  "snd" -> FunWrap(snd[Expr], Fixed(2)))
@@ -206,7 +197,11 @@ class EvalTest extends FlatSpec with Matchers {
                   case Right(a: List[(Env, Expr)]) =>
                     val args1: List[Expr] = a.map(_._2)
                     val args2 = tupleize(args1, i)
-                    Right((env, Expr(f(args2.asInstanceOf[B]))))
+                    try {
+                      Right((env, Expr(f(args2.asInstanceOf[B]))))
+                    } catch {
+                      case e: EvalError => Left(e)
+                    }
                   case Left(c :: _) => Left(c)
                 }
               case _           => Left(InvalidArgsNumber(i))

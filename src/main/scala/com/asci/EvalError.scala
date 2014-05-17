@@ -1,6 +1,6 @@
 package com.asci
 
-sealed abstract class EvalError
+sealed abstract class EvalError extends Throwable
 
 case class InvalidArgsNumber(valid: Int)               extends EvalError
 case class DivideByZero()                              extends EvalError
