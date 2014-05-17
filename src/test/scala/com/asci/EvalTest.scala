@@ -8,42 +8,13 @@ import scala.Some
 import com.asci.Expr.ExprFun
 import com.asci.Expr.Quotation
 import com.asci.Expr.ListExpr
+import com.asci.env.Env
 
 class EvalTest extends FlatSpec with Matchers {
   behavior of "eval"
 
   trait EnvSupplier {
-
-    def define(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
-      case Atom(a) :: b :: Nil => Right((e.insert(a, b), b))
-      case a :: _ :: Nil => Left(OtherError("Cannot assign to non-identifier"))
-      case _ => Left(InvalidArgsNumber(2))
-    }
-
-    def fst[A](a: (A, A)): A = a._1
-    def snd[A](a: (A, A)): A = a._2
-
-    def concat[A](a: (A, A)): A = a match {
-      case (StringConstant(s1), StringConstant(s2)) => StringConstant(s1 + s2).asInstanceOf[A]
-    }
-
-    def car[A](a: Tuple1[A]): A = a._1 match {
-      case ListExpr(head :: _) => head.asInstanceOf[A]
-      case DottedList(head :: _, _) => head.asInstanceOf[A]
-      case _ => throw TypeMismatch("non-empty list", a.toString)
-    }
-
-    private val initialEnv = Map("define" -> ExprFun(define),
-                                 "+" -> FunWrap(Primitives.add[Num[Float], Float], Variable()),
-                                 "-" -> FunWrap(Primitives.subtract[Num[Float], Float], Variable()),
-                                 "*" -> FunWrap(Primitives.multiply[Num[Float], Float], Variable()),
-                                 "/" -> FunWrap(Primitives.divide[Num[Float], Float], Variable()),
-                                 "car" -> FunWrap(car[Expr], Fixed(1)),
-                                 "concat" -> FunWrap(concat[StringConstant], Variable()),
-                                 "fst" -> FunWrap(fst[Expr], Fixed(2)),
-                                 "snd" -> FunWrap(snd[Expr], Fixed(2)))
-
-    val env = new Env(initialEnv)
+    val env = Env.r5rsEnv
   }
 
   it should "define variable" in new EnvSupplier {

@@ -1,6 +1,7 @@
 package com.asci
 
 import scalaz._
+import com.asci.env.Env
 
 sealed abstract class Expr
 

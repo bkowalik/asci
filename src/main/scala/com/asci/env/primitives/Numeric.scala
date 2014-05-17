@@ -1,11 +1,8 @@
-package com.asci
+package com.asci.env.primitives
 
 import com.asci.Constant.Num
 
-object Primitives {
-
-  // Numeric primitives
-
+object Numeric {
   def add[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
     case (b: Num[T], c: Num[T]) => Num.+(b, c).asInstanceOf[A]
   }
