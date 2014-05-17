@@ -27,22 +27,8 @@ class EvalTest extends FlatSpec with Matchers {
       case (StringConstant(s1), StringConstant(s2)) => StringConstant(s1 + s2).asInstanceOf[A]
     }
 
-    def add[T](e: Env, args: List[Expr])(implicit num: Numeric[T]): Either[EvalError, (Env, Expr)] = args match {
-      case a :: as =>
-        val evaluated = evalInternal(e, a)
-        val sumOfRest = add(e, as)
-        try {
-          sumOfRest.right.get._2 match {
-            case v: Num[T] => evaluated.right.get._2 match {
-              case v2: Num[T] => Right((e, Num.+(v, v2)))
-            }
-          }
-        } catch {
-          // FIXME: specify exception type
-          case e: Exception => Left(TypeMismatch("number", "FIXME unknown type"))
-        }
-      case Nil => Right((e, IntegerNum(0)))
-      case _ => Left(OtherError("FIXME: unknown error in add"))
+    def add[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
+      case (b: Num[T], c: Num[T]) => Num.+(b, c).asInstanceOf[A]
     }
 
     def car(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
@@ -61,7 +47,7 @@ class EvalTest extends FlatSpec with Matchers {
     }
 
     private val initialEnv = Map("define" -> ExprFun(define),
-                                 "+" -> ExprFun(add[Float]),
+                                 "+" -> FunWrap(add[Num[Float], Float], Variable()),
                                  "car" -> ExprFun(car),
                                  "concat" -> FunWrap(concat[StringConstant], Variable()),
                                  "fst" -> FunWrap(fst[Expr], Fixed(2)),
@@ -195,7 +181,6 @@ class EvalTest extends FlatSpec with Matchers {
   def apply[A, B](env: Env, f: String, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
     env.get(f) match {
       case Some(x: ExprFun) => x.f(env, args)
-      // FIXME: probably needs to evaluate arguments on the go in variable variant
       // FIXME: more type-safety
       // FIXME: allow variable arity implementation for non-associative operations
       case Some(x: FunWrap[A, B]) =>
@@ -222,8 +207,26 @@ class EvalTest extends FlatSpec with Matchers {
               case _           => Left(InvalidArgsNumber(i))
             }
           case Variable() =>
-            val a = args.tail.foldLeft(args.head) {case (acc: B, v: Expr) => Expr(f((acc, v).asInstanceOf[B])) }
-            Right((env, a))
+            // FIXME: code duplication with previous clause
+            val evaluated: Either[List[EvalError], List[(Env, Expr)]] = args.map({
+              e => evalInternal(env, e)
+            }).partition(_.isLeft) match {
+              // WTF Scala? no sequence? really?
+              case (Nil,  as) => Right(for(Right(i) <- as) yield i)
+              case (errors, _) => Left(for(Left(s) <- errors) yield s)
+            }
+
+            evaluated match {
+              case Right(a: List[(Env, Expr)]) =>
+                val args1 = a.map(_._2)
+                try {
+                  val res = args1.tail.foldLeft(args1.head) {case (acc: B, v: Expr) => Expr(f((acc, v).asInstanceOf[B])) }
+                  Right((env, res))
+                } catch {
+                  case e: Exception => Left(TypeMismatch("FIXME unknown type", "FIXME unknown type"))
+                }
+              case Left(c :: _) => Left(c)
+            }
         }
       case Some(y) => Left(OtherError(s"$f is not a function"))
       case None => Left(UnboundVariable(f))
