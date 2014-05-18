@@ -30,6 +30,7 @@ object Env {
 
                              "define" -> ExprFun(define),
                              "if"     -> ExprFun(`if`),
+                             "let"    -> ExprFun(let),
 
 
                              // not really useful functions

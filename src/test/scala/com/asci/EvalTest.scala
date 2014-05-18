@@ -130,6 +130,18 @@ class EvalTest extends FlatSpec with Matchers {
     result4.right.get._2 should equal(Atom("+"))
   }
 
+  it should "implement let" in new EnvSupplier {
+    val result = eval(env, "(let ((x 1)) x)")
+    result shouldBe a [Right[_,_]]
+    result.right.get._1.get("x") should equal(None)
+    result.right.get._2 should equal(IntegerNum(1))
+  }
+
+  it should "fail on duplicate bound variable in let" in new EnvSupplier {
+    val result = eval(env, "(let ((x 1) (x 2)) x)")
+    result should not be an [Right[_,_]]
+  }
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
     import com.asci.Eval._
