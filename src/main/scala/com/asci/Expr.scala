@@ -23,6 +23,7 @@ object Expr {
   def apply[A](a: A): Expr = a match {
     case e: Expr => e
     case s: String => StringConstant(s)
+    case b: Boolean => BooleanConstant(b)
   }
 
   implicit object ShowExpr extends Show[Expr] {

@@ -2,13 +2,19 @@ package com.asci
 
 import org.scalatest.{FlatSpec, Matchers}
 import com.asci.Expr._
-import com.asci.Constant.{StringConstant, Num, FloatingNum, IntegerNum}
+import com.asci.Constant._
 import com.asci.Expr.Atom
 import scala.Some
 import com.asci.Expr.ExprFun
 import com.asci.Expr.Quotation
 import com.asci.Expr.ListExpr
 import com.asci.env.Env
+import com.asci.Expr.FunWrap
+import com.asci.ParseError
+import com.asci.Expr.Atom
+import com.asci.Constant.IntegerNum
+import com.asci.Constant.StringConstant
+import com.asci.Constant.FloatingNum
 
 class EvalTest extends FlatSpec with Matchers {
   behavior of "eval"
@@ -151,6 +157,26 @@ class EvalTest extends FlatSpec with Matchers {
     val result = eval(env, "((lambda (x) x) 1)")
     result shouldBe a [Right[_,_]]
     result.right.get._2 should equal(IntegerNum(1))
+  }
+
+  it should "compare lt" in new EnvSupplier {
+    val result = eval(env, "(< 1 2)")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(BooleanConstant(true))
+  }
+
+  it should "count fibo" in new EnvSupplier {
+    val result = eval(env, "(define fib-rec (lambda (n) (if (< n 2) n (+ (fib-rec (- n 1)) (fib-rec (- n 2))))))")
+    result match {
+      case Right((newEnv, _)) =>
+        val result2 = eval(newEnv, "(fib-rec 6)")
+        result2 shouldBe a [Right[_,_]]
+        result2.right.get._2 should equal(IntegerNum(8))
+
+        val result3 = eval(newEnv, "(fib-rec 10)")
+        result3 shouldBe a [Right[_,_]]
+        result3.right.get._2 should equal(IntegerNum(55))
+    }
   }
 
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {

@@ -5,12 +5,18 @@ import com.asci._
 import com.asci.Eval.Eval
 import com.asci.Expr.{Lambda, DottedList, Atom, ListExpr}
 import com.asci.Constant.BooleanConstant
+import com.asci.ImplicitUtils.Sequencable
 import com.asci.InvalidArgsNumber
 import com.asci.OtherError
 
 object Internal {
   def define(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
-    case Atom(a) :: b :: Nil => Right((e.insert(a, b), b))
+    case Atom(a) :: b :: Nil =>
+      val evaled = b.eval(e)
+      evaled match {
+        case Right((_, evaled1)) => Right((e.insert(a, evaled1), b))
+        case Left(err) => Left(err)
+      }
     case a :: _ :: Nil => Left(OtherError("Cannot assign to non-identifier"))
     case _ => Left(InvalidArgsNumber(2))
   }
@@ -79,12 +85,4 @@ object Internal {
 
   def fst[A](a: (A, A)): A = a._1
   def snd[A](a: (A, A)): A = a._2
-
-  // FIXME: move to more appropriate place
-  implicit class Sequencable[A,B](val foo: List[Either[A,B]]) {
-    def sequence: Either[A, List[B]] = foo.partition(_.isLeft) match {
-      case (Nil, rights) => Right(for(Right(r) <- rights) yield r)
-      case (Left(err) :: _, _) => Left(err)
-    }
-  }
 }

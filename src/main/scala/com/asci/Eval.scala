@@ -2,7 +2,6 @@ package com.asci
 
 import com.asci.env.Env
 import com.asci.Expr._
-import scalaz._
 import com.asci.Expr.Atom
 import scala.Tuple1
 import scala.Some
@@ -17,6 +16,7 @@ import com.asci.Constant.IntegerNum
 import com.asci.Constant.StringConstant
 import com.asci.Expr.Fixed
 import com.asci.env.Env.EnvMonoid
+import com.asci.ImplicitUtils.Sequencable
 
 object Eval {
   implicit class Eval(val expr: Expr) {
@@ -46,11 +46,7 @@ object Eval {
         // FIXME: more type-safety
         // FIXME: allow variable arity implementation for non-associative operations
         case x: FunWrap[A, B] =>
-          val evaluatedArgs = args.map(_.eval(env)).partition(_.isLeft) match {
-            // WTF Scala? no sequence? really?
-            case (Nil,   as) => Right(for(Right(i) <- as) yield i)
-            case (errors, _) => Left(errors.head)
-          }
+          val evaluatedArgs = args.map(_.eval(env)).sequence
 
           evaluatedArgs match {
             case Right(l) =>
@@ -78,17 +74,25 @@ object Eval {
                   }
               }
 
-            case Left(l) => l
+            case Left(l) => Left(l)
           }
         case Lambda(formals, body, closure) => formals match {
           case ListExpr(vars) if vars.length == args.length =>
-            val envWithArgs = vars.zip(args).foldLeft(env) {case (acc, (Atom(name), value)) => env.insert(name, value)}
-            val finalEnv = EnvMonoid.append(envWithArgs, closure)
-            val result = body.eval(finalEnv)
+            val evaluatedArgs = args.map(_.eval(env)).sequence
 
-            result match {
-              case Right((_, r)) => Right(env, r)
-              case Left(l) => Left(l)
+            evaluatedArgs match {
+              case Right(l) =>
+                val args1 = l map (_._2)
+
+                val envWithArgs = vars.zip(args1).foldLeft(env) {case (acc, (Atom(name), value)) => env.insert(name, value)}
+                val finalEnv = EnvMonoid.append(envWithArgs, closure)
+                val result = body.eval(finalEnv)
+
+                result match {
+                  case Right((_, r)) => Right(env, r)
+                  case Left(l) => Left(l)
+                }
+              case Left(err) => Left(err)
             }
           case ListExpr(vars) => Left(InvalidArgsNumber(vars.length))
         }

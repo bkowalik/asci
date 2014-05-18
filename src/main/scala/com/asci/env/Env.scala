@@ -25,6 +25,8 @@ object Env {
                              "*" -> FunWrap(multiply[Num[Float], Float], Variable),
                              "/" -> FunWrap(divide  [Num[Float], Float], Variable),
 
+                             "<" -> FunWrap(<[Expr, Float], Fixed(2)),
+
                              "car"  -> FunWrap(car [Expr], Fixed(1)),
                              "cdr"  -> FunWrap(cdr [Expr], Fixed(1)),
                              "cons" -> FunWrap(cons[Expr], Fixed(1)),
