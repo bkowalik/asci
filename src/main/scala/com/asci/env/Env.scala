@@ -29,6 +29,7 @@ object Env {
                              "cons" -> FunWrap(cons[Expr], Fixed(1)),
 
                              "define" -> ExprFun(define),
+                             "if"     -> ExprFun(`if`),
 
 
                              // not really useful functions

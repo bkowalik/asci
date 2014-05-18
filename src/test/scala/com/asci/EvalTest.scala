@@ -112,84 +112,33 @@ class EvalTest extends FlatSpec with Matchers {
     result.right.get._2 should equal(IntegerNum(2))
   }
 
+  it should "implement if" in new EnvSupplier {
+    val result = eval(env, "((if #f + *) 3 4)")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(IntegerNum(12))
+
+    val result2 = eval(env, "(if #t + *)")
+    result2 shouldBe a [Right[_,_]]
+    result2.right.get._2 shouldBe a [FunWrap[_,_]]
+
+    val result3 = eval(env, "(if #f + (if #f - *))")
+    result3 shouldBe a [Right[_,_]]
+    result3.right.get._2 shouldBe a [FunWrap[_,_]]
+
+    val result4 = eval(env, "(if #t '+ '*)")
+    result4 shouldBe a [Right[_,_]]
+    result4.right.get._2 should equal(Atom("+"))
+  }
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
+    import com.asci.Eval._
 
     val parser = new Parser
     parser.read(scheme) match {
-      case parser.Success(result: List[Expr], _) => evalInternal(env, result.head)
+      case parser.Success(result: List[Expr], _) => result.head.eval(env)
       case parser.Error(err, _) => Left(ParseError(err))
       case parser.Failure(err, _) => Left(ParseError(err))
-    }
-  }
-
-  def evalInternal(env: Env, expr: Expr): Either[EvalError, (Env, Expr)] = expr match {
-    case ListExpr(Atom(f) :: args) => apply(env, f, args)
-    case v@IntegerNum(_) => Right((env, v))
-    case v@FloatingNum(_) => Right((env, v))
-    case Quotation(q) => Right((env, q))
-    case s@StringConstant(_) => Right((env, s))
-    case _ => Left(NotImplemented("foo"))
-  }
-
-  implicit class ListTuple[A](val l: List[A]) {
-    def tupleize(n: Int) = n match {
-      case 1 => tupleize1(l)
-      case 2 => tupleize2(l)
-    }
-
-    private def tupleize1(l: List[A]): Tuple1[A] = l match {
-      case a :: Nil => Tuple1(a)
-    }
-
-    private def tupleize2(l: List[A]): (A, A) = l match {
-      case a :: b :: Nil => (a, b)
-    }
-  }
-
-  def apply[A, B](env: Env, f: String, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
-    env.get(f) match {
-      case Some(x: ExprFun) => x.f(env, args)
-      // FIXME: more type-safety
-      // FIXME: allow variable arity implementation for non-associative operations
-      case Some(x: FunWrap[A, B]) =>
-        val evaluatedArgs = args.map(e => evalInternal(env, e)).partition(_.isLeft) match {
-          // WTF Scala? no sequence? really?
-          case (Nil,   as) => Right(for(Right(i) <- as) yield i)
-          case (errors, _) => Left(errors.head)
-        }
-
-        evaluatedArgs match {
-          case Right(l) =>
-            val args1 = l map (_._2)
-
-            x.arity match {
-              case Fixed(i) =>
-                args1.length match {
-                  case j if i == j =>
-                    try {
-                      val tupledArgs = args1.tupleize(i).asInstanceOf[B]
-                      Right((env, Expr(x.f(tupledArgs))))
-                    } catch {
-                      case e: EvalError => Left(e)
-                    }
-                  case _ => Left(InvalidArgsNumber(i))
-                }
-              case Variable =>
-                try {
-                  val res = args1.tail.foldLeft(args1.head) {case (acc, v) => Expr(x.f((acc, v).asInstanceOf[B]))}
-                  Right((env, res))
-                } catch {
-                  // FIXME: be more specific about exception type
-                  case e: Exception => Left(TypeMismatch("FIXME unknown type", "FIXME unknown type"))
-                }
-            }
-
-          case Left(l) => l
-        }
-
-      case Some(y) => Left(OtherError(s"$f is not a function"))
-      case None => Left(UnboundVariable(f))
     }
   }
 }
