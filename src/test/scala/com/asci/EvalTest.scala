@@ -132,17 +132,19 @@ class EvalTest extends FlatSpec with Matchers {
     case _ => Left(NotImplemented("foo"))
   }
 
-  def tupleize1[A](l: List[A]): Tuple1[A] = l match {
-    case a :: Nil => Tuple1(a)
-  }
+  implicit class ListTuple[A](val l: List[A]) {
+    def tupleize(n: Int) = n match {
+      case 1 => tupleize1(l)
+      case 2 => tupleize2(l)
+    }
 
-  def tupleize2[A](l: List[A]): Tuple2[A, A] = l match {
-    case a :: b :: Nil => (a, b)
-  }
+    private def tupleize1(l: List[A]): Tuple1[A] = l match {
+      case a :: Nil => Tuple1(a)
+    }
 
-  def tupleize[A](l: List[A], n: Int) = n match {
-    case 1 => tupleize1(l)
-    case 2 => tupleize2(l)
+    private def tupleize2(l: List[A]): (A, A) = l match {
+      case a :: b :: Nil => (a, b)
+    }
   }
 
   def apply[A, B](env: Env, f: String, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
@@ -151,54 +153,41 @@ class EvalTest extends FlatSpec with Matchers {
       // FIXME: more type-safety
       // FIXME: allow variable arity implementation for non-associative operations
       case Some(x: FunWrap[A, B]) =>
-        val f: Function[B, A] = x.f
-        x.arity match {
-          case Fixed(i) =>
-            args.length match {
-              case j if i == j =>
-                val evaluated: Either[List[EvalError], List[(Env, Expr)]] = args.map({
-                  e => evalInternal(env, e)
-                }).partition(_.isLeft) match {
-                  // WTF Scala? no sequence? really?
-                  case (Nil,  as) => Right(for(Right(i) <- as) yield i)
-                  case (errors, _) => Left(for(Left(s) <- errors) yield s)
-                }
+        val evaluatedArgs = args.map(e => evalInternal(env, e)).partition(_.isLeft) match {
+          // WTF Scala? no sequence? really?
+          case (Nil,   as) => Right(for(Right(i) <- as) yield i)
+          case (errors, _) => Left(errors.head)
+        }
 
-                evaluated match {
-                  case Right(a: List[(Env, Expr)]) =>
-                    val args1: List[Expr] = a.map(_._2)
-                    val args2 = tupleize(args1, i)
+        evaluatedArgs match {
+          case Right(l) =>
+            val args1 = l map (_._2)
+
+            x.arity match {
+              case Fixed(i) =>
+                args1.length match {
+                  case j if i == j =>
                     try {
-                      Right((env, Expr(f(args2.asInstanceOf[B]))))
+                      val tupledArgs = args1.tupleize(i).asInstanceOf[B]
+                      Right((env, Expr(x.f(tupledArgs))))
                     } catch {
                       case e: EvalError => Left(e)
                     }
-                  case Left(c :: _) => Left(c)
+                  case _ => Left(InvalidArgsNumber(i))
                 }
-              case _           => Left(InvalidArgsNumber(i))
-            }
-          case Variable =>
-            // FIXME: code duplication with previous clause
-            val evaluated: Either[List[EvalError], List[(Env, Expr)]] = args.map({
-              e => evalInternal(env, e)
-            }).partition(_.isLeft) match {
-              // WTF Scala? no sequence? really?
-              case (Nil,  as) => Right(for(Right(i) <- as) yield i)
-              case (errors, _) => Left(for(Left(s) <- errors) yield s)
-            }
-
-            evaluated match {
-              case Right(a: List[(Env, Expr)]) =>
-                val args1 = a.map(_._2)
+              case Variable =>
                 try {
-                  val res = args1.tail.foldLeft(args1.head) {case (acc: B, v: Expr) => Expr(f((acc, v).asInstanceOf[B])) }
+                  val res = args1.tail.foldLeft(args1.head) {case (acc, v) => Expr(x.f((acc, v).asInstanceOf[B]))}
                   Right((env, res))
                 } catch {
+                  // FIXME: be more specific about exception type
                   case e: Exception => Left(TypeMismatch("FIXME unknown type", "FIXME unknown type"))
                 }
-              case Left(c :: _) => Left(c)
             }
+
+          case Left(l) => l
         }
+
       case Some(y) => Left(OtherError(s"$f is not a function"))
       case None => Left(UnboundVariable(f))
     }
