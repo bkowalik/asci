@@ -19,10 +19,10 @@ object Env {
   import primitives.List._
   import primitives.Numeric._
 
-  lazy val r5rsEnv = Env(Map("+" -> FunWrap(add     [Num[Float], Float], Variable()),
-                             "-" -> FunWrap(subtract[Num[Float], Float], Variable()),
-                             "*" -> FunWrap(multiply[Num[Float], Float], Variable()),
-                             "/" -> FunWrap(divide  [Num[Float], Float], Variable()),
+  lazy val r5rsEnv = Env(Map("+" -> FunWrap(add     [Num[Float], Float], Variable),
+                             "-" -> FunWrap(subtract[Num[Float], Float], Variable),
+                             "*" -> FunWrap(multiply[Num[Float], Float], Variable),
+                             "/" -> FunWrap(divide  [Num[Float], Float], Variable),
 
                              "car"  -> FunWrap(car [Expr], Fixed(1)),
                              "cdr"  -> FunWrap(cdr [Expr], Fixed(1)),
@@ -32,7 +32,7 @@ object Env {
 
 
                              // not really useful functions
-                             "concat" -> FunWrap(concat[StringConstant], Variable()),
+                             "concat" -> FunWrap(concat[StringConstant], Variable),
                              "fst"    -> FunWrap(fst[Expr], Fixed(2)),
                              "snd"    -> FunWrap(snd[Expr], Fixed(2))
   ))

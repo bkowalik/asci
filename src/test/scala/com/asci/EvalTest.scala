@@ -177,7 +177,7 @@ class EvalTest extends FlatSpec with Matchers {
                 }
               case _           => Left(InvalidArgsNumber(i))
             }
-          case Variable() =>
+          case Variable =>
             // FIXME: code duplication with previous clause
             val evaluated: Either[List[EvalError], List[(Env, Expr)]] = args.map({
               e => evalInternal(env, e)

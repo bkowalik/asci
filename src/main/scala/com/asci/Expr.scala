@@ -16,8 +16,8 @@ object Expr {
   case class FunWrap[A, B](f: Function[B, A], arity: Arity) extends Expr
 
   sealed abstract class Arity
-  case class Fixed(i: Int) extends Arity
-  case class Variable()    extends Arity
+  case class  Fixed(i: Int) extends Arity
+  case object Variable      extends Arity
 
   def apply[A](a: A): Expr = a match {
     case e: Expr => e
