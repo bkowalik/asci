@@ -3,6 +3,7 @@ package com.asci.env
 import com.asci.Expr
 import com.asci.Expr.{ExprFun, Fixed, Variable, FunWrap}
 import com.asci.Constant.{StringConstant, Num}
+import scalaz.Monoid
 
 case class Env(private val env: Map[String, Expr]) {
   def this() = this(Map.empty)
@@ -31,6 +32,7 @@ object Env {
                              "define" -> ExprFun(define),
                              "if"     -> ExprFun(`if`),
                              "let"    -> ExprFun(let),
+                             "lambda" -> ExprFun(lambda),
 
 
                              // not really useful functions
@@ -38,4 +40,15 @@ object Env {
                              "fst"    -> FunWrap(fst[Expr], Fixed(2)),
                              "snd"    -> FunWrap(snd[Expr], Fixed(2))
   ))
+
+  implicit object EnvMonoid extends Monoid[Env] {
+    def zero: Env = new Env()
+
+    def append(e1: Env, e2: => Env): Env = e2.env.foldLeft(e1) {
+      case (acc, elem) => e1.get(elem._1) match {
+        case Some(_) => acc
+        case None    => acc.insert(elem._1, elem._2)
+      }
+    }
+  }
 }

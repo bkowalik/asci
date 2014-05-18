@@ -14,6 +14,7 @@ object Expr {
   case class Atom(f: String) extends Expr
   case class ExprFun(f: (Env, List[Expr]) => Either[EvalError, (Env, Expr)]) extends Expr
   case class FunWrap[A, B](f: Function[B, A], arity: Arity) extends Expr
+  case class Lambda(formals: Expr, body: Expr, closure: Env) extends Expr
 
   sealed abstract class Arity
   case class  Fixed(i: Int) extends Arity
@@ -36,6 +37,7 @@ object Expr {
       case StringConstant(s)    => "\"" + s + "\""
       case CharacterConstant(c) => "#\\" + c
       case BooleanConstant(b)   => if (b) "#t" else "#f"
+      case Lambda(f, b, _)      => "(lambda " + shows(f) + " " + shows(b) + ")"
     }
   }
 }

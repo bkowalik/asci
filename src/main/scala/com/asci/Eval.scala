@@ -2,14 +2,21 @@ package com.asci
 
 import com.asci.env.Env
 import com.asci.Expr._
+import scalaz._
 import com.asci.Expr.Atom
+import scala.Tuple1
 import scala.Some
-import com.asci.Constant.{BooleanConstant, FloatingNum, IntegerNum, StringConstant}
+import com.asci.Expr.Lambda
+import com.asci.Constant.FloatingNum
 import com.asci.Expr.ExprFun
 import com.asci.Expr.FunWrap
 import com.asci.Expr.Quotation
 import com.asci.Expr.ListExpr
+import com.asci.Constant.BooleanConstant
+import com.asci.Constant.IntegerNum
+import com.asci.Constant.StringConstant
 import com.asci.Expr.Fixed
+import com.asci.env.Env.EnvMonoid
 
 object Eval {
   implicit class Eval(val expr: Expr) {
@@ -73,7 +80,18 @@ object Eval {
 
             case Left(l) => l
           }
+        case Lambda(formals, body, closure) => formals match {
+          case ListExpr(vars) if vars.length == args.length =>
+            val envWithArgs = vars.zip(args).foldLeft(env) {case (acc, (Atom(name), value)) => env.insert(name, value)}
+            val finalEnv = EnvMonoid.append(envWithArgs, closure)
+            val result = body.eval(finalEnv)
 
+            result match {
+              case Right((_, r)) => Right(env, r)
+              case Left(l) => Left(l)
+            }
+          case ListExpr(vars) => Left(InvalidArgsNumber(vars.length))
+        }
         case y => Left(OtherError(s"$f is not a function"))
       }
     }

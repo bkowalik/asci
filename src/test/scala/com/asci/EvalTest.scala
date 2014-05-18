@@ -142,6 +142,17 @@ class EvalTest extends FlatSpec with Matchers {
     result should not be an [Right[_,_]]
   }
 
+  it should "implement const lambda" in new EnvSupplier {
+    val result = eval(env, "((lambda (x) 1) 0)")
+    result.right.get._2 should equal(IntegerNum(1))
+  }
+
+  it should "implement fixed arity lambda" in new EnvSupplier {
+    val result = eval(env, "((lambda (x) x) 1)")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal(IntegerNum(1))
+  }
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
     import com.asci.Eval._

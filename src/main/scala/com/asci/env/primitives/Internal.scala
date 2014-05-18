@@ -3,7 +3,7 @@ package com.asci.env.primitives
 import com.asci.env.Env
 import com.asci._
 import com.asci.Eval.Eval
-import com.asci.Expr.{Atom, ListExpr}
+import com.asci.Expr.{Lambda, DottedList, Atom, ListExpr}
 import com.asci.Constant.BooleanConstant
 import com.asci.InvalidArgsNumber
 import com.asci.OtherError
@@ -58,6 +58,22 @@ object Internal {
         case Left(l) => Left(l)
       }
     case bindings :: _ :: Nil => Left(TypeMismatch("list of lists", bindings.getClass.toString))
+    case _ => Left(InvalidArgsNumber(2))
+  }
+
+  def lambda(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
+    case (f@ListExpr(formals)) :: body :: Nil =>
+      val arguments = formals.map({
+        case Atom(x) => Right(x)
+        case a       => Left(TypeMismatch("atom", a.toString))
+      }).sequence
+
+      arguments match {
+        case Right(_) => Right((e, Lambda(f, body, e)))
+        case Left(l)  => Left(l)
+      }
+    case DottedList(_, _) :: _ :: Nil => Left(NotImplemented("n or more arguments lambda"))
+    case Atom(_) :: _ :: Nil => Left(NotImplemented("variable arity lambda"))
     case _ => Left(InvalidArgsNumber(2))
   }
 
