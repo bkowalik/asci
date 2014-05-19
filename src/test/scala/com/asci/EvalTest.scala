@@ -10,6 +10,7 @@ import com.asci.Constant.StringConstant
 import com.asci.Constant.FloatingNum
 import scalaz._
 import Scalaz._
+import scalaz.\/._
 
 class EvalTest extends FlatSpec with Matchers {
   behavior of "eval"
@@ -178,7 +179,7 @@ class EvalTest extends FlatSpec with Matchers {
 
     val parser = new Parser
     parser.read(scheme) match {
-      case parser.Success(result: List[Expr], _) => result.head.eval(env)
+      case parser.Success(result: List[Expr], _) => result.head.eval(env).toEither
       case parser.Error(err, _) => Left(ParseError(err))
       case parser.Failure(err, _) => Left(ParseError(err))
     }

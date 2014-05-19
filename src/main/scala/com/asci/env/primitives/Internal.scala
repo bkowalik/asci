@@ -14,12 +14,12 @@ import scalaz.\/._
 object Internal {
   def define(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
     case Atom(a) :: b :: Nil =>
-      for {
-        body <- b.eval(e).right
+      (for {
+        body <- b.eval(e)
       } yield {
         val newEnv = e.insert(a, body._2)
         (newEnv, b)
-      }
+      }).toEither
     case a :: _ :: Nil => Left(OtherError("Cannot assign to non-identifier"))
     case _ => Left(InvalidArgsNumber(2))
   }
@@ -32,10 +32,10 @@ object Internal {
 
   def `if`(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
     case cond :: t :: f :: Nil =>
-      for {
-        condition <- cond.eval(e).right
-        result <- (if (condition._2.isTrue) t else f).eval(e).right
-      } yield result
+      (for {
+        condition <- cond.eval(e)
+        result <- (if (condition._2.isTrue) t else f).eval(e)
+      } yield result).toEither
     case _ => Left(InvalidArgsNumber(3))
   }
 
@@ -44,14 +44,11 @@ object Internal {
       val result: \/[EvalError, Expr] = for {
         binds <- bindings.map({
           // FIXME: better error message for messed up binding than MatchError
-          case ListExpr(Atom(atom) :: value :: Nil) => value.eval(e) match {
-            case Right((_, v)) => (atom, v).right
-            case Left(l)       => l.left
-          }
+          case ListExpr(Atom(atom) :: value :: Nil) => value.eval(e).map({case (_, v) => (atom, v)})
         }).sequenceU
         environmentOverlay <- binds.asDistinct
         newEnv <- environmentOverlay.foldLeft(e) {case (acc, (s, v)) => e.insert(s, v)}.right
-        evaled <- fromEither(body.eval(newEnv))
+        evaled <- body.eval(newEnv)
       } yield evaled._2
 
       result.map(expr => (e, expr)).toEither

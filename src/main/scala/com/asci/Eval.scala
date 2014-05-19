@@ -17,86 +17,77 @@ import com.asci.Constant.StringConstant
 import com.asci.Expr.Fixed
 import com.asci.env.Env.EnvMonoid
 import com.asci.ImplicitUtils.Sequencable
+import scalaz._
+import Scalaz._
+import scalaz.\/._
 
 object Eval {
   implicit class Eval(val expr: Expr) {
-    def eval(env: Env): Either[EvalError, (Env, Expr)] = expr match {
+    def eval(env: Env): \/[EvalError, (Env, Expr)] = expr match {
       case ListExpr(f :: args) =>
-        val evaluatedFun = f.eval(env)
-        evaluatedFun match {
-          case Right((newEnv, fun)) =>
-            apply(newEnv, fun, args)
-          case l@Left(_) => l
-        }
-      case v@IntegerNum(_) => Right((env, v))
-      case v@FloatingNum(_) => Right((env, v))
-      case Quotation(q) => Right((env, q))
-      case s@StringConstant(_) => Right((env, s))
-      case b@BooleanConstant(_) => Right((env, b))
+        for {
+          evaluatedFun <- f.eval(env)
+          applied <- apply(evaluatedFun._1, evaluatedFun._2, args)
+        } yield applied
+      case v@IntegerNum(_) => (env, v).right
+      case v@FloatingNum(_) => (env, v).right
+      case Quotation(q) => (env, q).right
+      case s@StringConstant(_) => (env, s).right
+      case b@BooleanConstant(_) => (env, b).right
       case Atom(a) => env.get(a) match {
-        case Some(exp) => Right((env, exp))
-        case None      => Left(UnboundVariable(a))
+        case Some(exp) => (env, exp).right
+        case None      => UnboundVariable(a).left
       }
-      case _ => Left(NotImplemented("foo"))
+      case _ => NotImplemented("foo").left
     }
 
-    private def apply[A, B](env: Env, f: Expr, args: List[Expr]): Either[EvalError, (Env, Expr)] = {
+    private def apply[A, B](env: Env, f: Expr, args: List[Expr]): \/[EvalError, (Env, Expr)] = {
       f match {
-        case x: ExprFun => x.f(env, args)
+        case x: ExprFun => fromEither(x.f(env, args))
         // FIXME: more type-safety
         // FIXME: allow variable arity implementation for non-associative operations
         case x: FunWrap[A, B] =>
-          val evaluatedArgs = args.map(_.eval(env)).sequence
-
-          evaluatedArgs match {
-            case Right(l) =>
-              val args1 = l map (_._2)
-
-              x.arity match {
-                case Fixed(i) =>
-                  args1.length match {
-                    case j if i == j =>
-                      try {
-                        val tupledArgs = args1.tupleize(i).asInstanceOf[B]
-                        Right((env, Expr(x.f(tupledArgs))))
-                      } catch {
-                        case e: EvalError => Left(e)
-                      }
-                    case _ => Left(InvalidArgsNumber(i))
-                  }
-                case Variable =>
-                  try {
-                    val res = args1.tail.foldLeft(args1.head) {case (acc, v) => Expr(x.f((acc, v).asInstanceOf[B]))}
-                    Right((env, res))
-                  } catch {
-                    // FIXME: be more specific about exception type
-                    case e: Exception => Left(TypeMismatch("FIXME unknown type", "FIXME unknown type"))
-                  }
-              }
-
-            case Left(l) => Left(l)
-          }
+          for {
+            evaluatedArgs <- args.map(_.eval(env)).sequenceU
+            args1 = evaluatedArgs.map(_._2)
+            result <- x.arity match {
+              case Fixed(i) =>
+                args1.length match {
+                  case j if i == j =>
+                    try {
+                      val tupledArgs = args1.tupleize(i).asInstanceOf[B]
+                      (env, Expr(x.f(tupledArgs))).right
+                    } catch {
+                      case e: EvalError => e.left
+                    }
+                }
+              case Variable =>
+                try {
+                  val res = args1.tail.foldLeft(args1.head) {case (acc, v) => Expr(x.f((acc, v).asInstanceOf[B]))}
+                  (env, res).right
+                } catch {
+                  // FIXME: be more specific about exception type
+                  case e: Exception => TypeMismatch("FIXME unknown type", "FIXME unknown type").left
+                }
+            }
+          } yield result
         case Lambda(formals, body, closure) => formals match {
           case ListExpr(vars) if vars.length == args.length =>
-            val evaluatedArgs = args.map(_.eval(env)).sequence
 
-            evaluatedArgs match {
-              case Right(l) =>
-                val args1 = l map (_._2)
+            val result: \/[EvalError, Expr] = for {
+              evaluatedArgs <- args.map(_.eval(env)).sequenceU
+              args1 = evaluatedArgs.map(_._2)
+              envWithArgs = vars.zip(args1).foldLeft(env) {
+                case (acc, (Atom(name), value)) => env.insert(name, value)
+              }
+              finalEnv = EnvMonoid.append(envWithArgs, closure)
+              result <- body.eval(finalEnv)
+            } yield result._2
 
-                val envWithArgs = vars.zip(args1).foldLeft(env) {case (acc, (Atom(name), value)) => env.insert(name, value)}
-                val finalEnv = EnvMonoid.append(envWithArgs, closure)
-                val result = body.eval(finalEnv)
-
-                result match {
-                  case Right((_, r)) => Right(env, r)
-                  case Left(l) => Left(l)
-                }
-              case Left(err) => Left(err)
-            }
-          case ListExpr(vars) => Left(InvalidArgsNumber(vars.length))
+            result.map(expr => (env, expr))
+          case ListExpr(vars) => InvalidArgsNumber(vars.length).left
         }
-        case y => Left(OtherError(s"$f is not a function"))
+        case y => OtherError(s"$f is not a function").left
       }
     }
   }
