@@ -67,10 +67,10 @@ object Eval {
             val result: \/[EvalError, Expr] = for {
               evaluatedArgs <- args.map(_.eval(env)).sequenceU
               args1 = evaluatedArgs.map(_._2)
-              envWithArgs = vars.zip(args1).foldLeft(env) {
+              envWithVars = vars.zip(args1).foldLeft(env) {
                 case (acc, (Atom(name), value)) => env.insert(name, value)
               }
-              finalEnv = envWithArgs |+| closure
+              finalEnv = envWithVars |+| closure
               result <- body.eval(finalEnv)
             } yield result._2
 
@@ -86,6 +86,21 @@ object Eval {
             } yield result._2
 
             result.map(expr => (env, expr))
+          case DottedList(vars, Atom(leftovers)) if args.length >= vars.length =>
+            val result: \/[EvalError, Expr] = for {
+              evaluatedArgs <- args.map(_.eval(env)).sequenceU
+              args1 = evaluatedArgs.map(_._2)
+              envWithVars = vars.zip(args1).foldLeft(env) {
+                case (acc, (Atom(name), value)) => env.insert(name, value)
+              }
+              envWithLeftovers = envWithVars.insert(leftovers, ListExpr(args1.drop(vars.length)))
+              finalEnv = envWithLeftovers |+| closure
+              result <- body.eval(finalEnv)
+            } yield result._2
+
+            result.map(expr => (env, expr))
+          case DottedList(vars, _) =>
+            InvalidArgsNumber(vars.length).left
         }
         case y => OtherError(s"$f is not a function").left
       }

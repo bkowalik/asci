@@ -45,7 +45,7 @@ object Internal {
           // FIXME: better error message for messed up binding than MatchError
           case ListExpr(Atom(atom) :: value :: Nil) => value.eval(e).map({case (_, v) => (atom, v)})
         }).sequenceU
-        environmentOverlay <- binds.asDistinct
+        environmentOverlay <- binds.asDistinct(_._1)
         newEnv <- environmentOverlay.foldLeft(e) {case (acc, (s, v)) => e.insert(s, v)}.right
         evaled <- body.eval(newEnv)
       } yield evaled._2
@@ -58,12 +58,20 @@ object Internal {
   def lambda(e: Env, args: List[Expr]): \/[EvalError, (Env, Expr)] = args match {
     case (f@ListExpr(formals)) :: body :: Nil =>
       for {
-        arguments <- formals.map({
+        _ <- formals.map({
           case Atom(x) => x.right
           case a       => TypeMismatch("atom", a.toString).left
         }).sequenceU
+        // FIXME: distinct bindings!!!
       } yield (e, Lambda(f, body, e))
-    case DottedList(_, _) :: _ :: Nil => NotImplemented("n or more arguments lambda").left
+    case (f@DottedList(formals, formal)) :: body :: Nil =>
+      for {
+        arguments <- (formal :: formals).map({
+          case Atom(x) => x.right
+          case a       => TypeMismatch("atom", a.toString).left
+        }).sequenceU
+        _ <- arguments.asDistinct(foo => foo)
+      } yield (e, Lambda(f, body, e))
     case (a@Atom(_)) :: body :: Nil =>
       (e, Lambda(a, body, e)).right
     case _ => InvalidArgsNumber(2).left
@@ -72,9 +80,9 @@ object Internal {
   def fst[A](a: (A, A)): A = a._1
   def snd[A](a: (A, A)): A = a._2
 
-  implicit class Distinct(l: List[(String, Expr)]) {
-    def asDistinct: \/[EvalError, List[(String, Expr)]] = {
-      val names = l map (_._1)
+  implicit class Distinct[A](l: List[A]) {
+    def asDistinct[B](f: A => B): \/[EvalError, List[A]] = {
+      val names = l map f
       if (names.distinct == names)
         l.right
       else

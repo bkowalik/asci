@@ -190,6 +190,14 @@ class EvalTest extends FlatSpec with Matchers {
     result.right.get._2 should equal (ListExpr(List()))
   }
 
+  it should "implement dotted-list lambdas" in new EnvSupplier {
+    val result = eval(env, "((lambda (x y . z) z) 1 2 3 4)")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal (ListExpr(List(IntegerNum(3), IntegerNum(4))))
+  }
+
+  //FIXME: test for InvalidArgsNumber for all types of lambdas
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
     import com.asci.Eval._
