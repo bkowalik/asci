@@ -196,6 +196,11 @@ class EvalTest extends FlatSpec with Matchers {
     result.right.get._2 should equal (ListExpr(List(IntegerNum(3), IntegerNum(4))))
   }
 
+  it should "fail for duplicated bound variable in proper list lambda" in new EnvSupplier {
+    val result = eval(env, "((lambda (x y z x) y) 1 2 3 4)")
+    result should not be an [Right[_,_]]
+  }
+
   //FIXME: test for InvalidArgsNumber for all types of lambdas
 
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {

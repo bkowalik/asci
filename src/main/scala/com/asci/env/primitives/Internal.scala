@@ -58,11 +58,11 @@ object Internal {
   def lambda(e: Env, args: List[Expr]): \/[EvalError, (Env, Expr)] = args match {
     case (f@ListExpr(formals)) :: body :: Nil =>
       for {
-        _ <- formals.map({
+        arguments <- formals.map({
           case Atom(x) => x.right
           case a       => TypeMismatch("atom", a.toString).left
         }).sequenceU
-        // FIXME: distinct bindings!!!
+        _ <- arguments.asDistinct(foo => foo)
       } yield (e, Lambda(f, body, e))
     case (f@DottedList(formals, formal)) :: body :: Nil =>
       for {
