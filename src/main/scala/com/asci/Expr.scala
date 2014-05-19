@@ -12,7 +12,7 @@ object Expr {
   case class DottedList(l: List[Expr], e: Expr) extends Expr
   case class Quotation(q: Expr) extends Expr
   case class Atom(f: String) extends Expr
-  case class ExprFun(f: (Env, List[Expr]) => Either[EvalError, (Env, Expr)]) extends Expr
+  case class ExprFun(f: (Env, List[Expr]) => \/[EvalError, (Env, Expr)]) extends Expr
   case class FunWrap[A, B](f: Function[B, A], arity: Arity) extends Expr
   case class Lambda(formals: Expr, body: Expr, closure: Env) extends Expr
 

@@ -12,16 +12,16 @@ import Scalaz._
 import scalaz.\/._
 
 object Internal {
-  def define(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
+  def define(e: Env, args: List[Expr]): \/[EvalError, (Env, Expr)] = args match {
     case Atom(a) :: b :: Nil =>
-      (for {
+      for {
         body <- b.eval(e)
       } yield {
         val newEnv = e.insert(a, body._2)
         (newEnv, b)
-      }).toEither
-    case a :: _ :: Nil => Left(OtherError("Cannot assign to non-identifier"))
-    case _ => Left(InvalidArgsNumber(2))
+      }
+    case a :: _ :: Nil => OtherError("Cannot assign to non-identifier").left
+    case _ => InvalidArgsNumber(2).left
   }
 
   implicit class Trueness(val e: Expr) {
@@ -30,16 +30,16 @@ object Internal {
     }
   }
 
-  def `if`(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
+  def `if`(e: Env, args: List[Expr]): \/[EvalError, (Env, Expr)] = args match {
     case cond :: t :: f :: Nil =>
-      (for {
+      for {
         condition <- cond.eval(e)
         result <- (if (condition._2.isTrue) t else f).eval(e)
-      } yield result).toEither
-    case _ => Left(InvalidArgsNumber(3))
+      } yield result
+    case _ => InvalidArgsNumber(3).left
   }
 
-  def let(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
+  def let(e: Env, args: List[Expr]): \/[EvalError, (Env, Expr)] = args match {
     case ListExpr(bindings) :: body :: Nil =>
       val result: \/[EvalError, Expr] = for {
         binds <- bindings.map({
@@ -51,23 +51,22 @@ object Internal {
         evaled <- body.eval(newEnv)
       } yield evaled._2
 
-      result.map(expr => (e, expr)).toEither
-    case bindings :: _ :: Nil => Left(TypeMismatch("list of lists", bindings.getClass.toString))
-    case _ => Left(InvalidArgsNumber(2))
+      result.map(expr => (e, expr))
+    case bindings :: _ :: Nil => TypeMismatch("list of lists", bindings.getClass.toString).left
+    case _ => InvalidArgsNumber(2).left
   }
 
-  def lambda(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
+  def lambda(e: Env, args: List[Expr]): \/[EvalError, (Env, Expr)] = args match {
     case (f@ListExpr(formals)) :: body :: Nil =>
-      import ImplicitUtils.Sequencable
       for {
         arguments <- formals.map({
-          case Atom(x) => Right(x)
-          case a       => Left(TypeMismatch("atom", a.toString))
-        }).sequence.right
+          case Atom(x) => x.right
+          case a       => TypeMismatch("atom", a.toString).left
+        }).sequenceU
       } yield (e, Lambda(f, body, e))
-    case DottedList(_, _) :: _ :: Nil => Left(NotImplemented("n or more arguments lambda"))
-    case Atom(_) :: _ :: Nil => Left(NotImplemented("variable arity lambda"))
-    case _ => Left(InvalidArgsNumber(2))
+    case DottedList(_, _) :: _ :: Nil => NotImplemented("n or more arguments lambda").left
+    case Atom(_) :: _ :: Nil => NotImplemented("variable arity lambda").left
+    case _ => InvalidArgsNumber(2).left
   }
 
   def fst[A](a: (A, A)): A = a._1

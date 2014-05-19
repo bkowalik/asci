@@ -16,10 +16,8 @@ import com.asci.Constant.IntegerNum
 import com.asci.Constant.StringConstant
 import com.asci.Expr.Fixed
 import com.asci.env.Env.EnvMonoid
-import com.asci.ImplicitUtils.Sequencable
 import scalaz._
 import Scalaz._
-import scalaz.\/._
 
 object Eval {
   implicit class Eval(val expr: Expr) {
@@ -43,7 +41,7 @@ object Eval {
 
     private def apply[A, B](env: Env, f: Expr, args: List[Expr]): \/[EvalError, (Env, Expr)] = {
       f match {
-        case x: ExprFun => fromEither(x.f(env, args))
+        case x: ExprFun => x.f(env, args)
         // FIXME: more type-safety
         // FIXME: allow variable arity implementation for non-associative operations
         case x: FunWrap[A, B] =>
