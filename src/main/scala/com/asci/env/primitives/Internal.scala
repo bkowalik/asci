@@ -5,17 +5,20 @@ import com.asci._
 import com.asci.Eval.Eval
 import com.asci.Expr.{Lambda, DottedList, Atom, ListExpr}
 import com.asci.Constant.BooleanConstant
-import com.asci.ImplicitUtils.Sequencable
 import com.asci.InvalidArgsNumber
 import com.asci.OtherError
+import scalaz._
+import Scalaz._
+import scalaz.\/._
 
 object Internal {
   def define(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
     case Atom(a) :: b :: Nil =>
-      val evaled = b.eval(e)
-      evaled match {
-        case Right((_, evaled1)) => Right((e.insert(a, evaled1), b))
-        case Left(err) => Left(err)
+      for {
+        body <- b.eval(e).right
+      } yield {
+        val newEnv = e.insert(a, body._2)
+        (newEnv, b)
       }
     case a :: _ :: Nil => Left(OtherError("Cannot assign to non-identifier"))
     case _ => Left(InvalidArgsNumber(2))
@@ -29,55 +32,42 @@ object Internal {
 
   def `if`(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
     case cond :: t :: f :: Nil =>
-      val condition = cond.eval(e)
-
-      condition match {
-        case r@Right((_, expr)) =>
-          (if (expr.isTrue) t else f).eval(e)
-        case l@Left(_) => l
-      }
+      for {
+        condition <- cond.eval(e).right
+        result <- (if (condition._2.isTrue) t else f).eval(e).right
+      } yield result
     case _ => Left(InvalidArgsNumber(3))
   }
 
   def let(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
     case ListExpr(bindings) :: body :: Nil =>
-      val binds = bindings.map({
-        case ListExpr(Atom(atom) :: value :: Nil) => value.eval(e) match {
-          case Right((_, v)) => Right((atom, v))
-          case Left(l)       => Left(l)
-        }
-      }).sequence
-
-      def distinct(l: List[(String, Expr)]) = {
-        val names = l map (_._1)
-        names.distinct == names
-      }
-
-      binds match {
-        case Right(environmentOverlay) if distinct(environmentOverlay) =>
-          val newEnv = environmentOverlay.foldLeft(e) {case (acc, (s, v)) => e.insert(s, v)}
-          body.eval(newEnv) match {
-            case Right((_, result)) => Right(e, result)
-            case Left(l) => Left(l)
+      val result: \/[EvalError, Expr] = for {
+        binds <- bindings.map({
+          // FIXME: better error message for messed up binding than MatchError
+          case ListExpr(Atom(atom) :: value :: Nil) => value.eval(e) match {
+            case Right((_, v)) => (atom, v).right
+            case Left(l)       => l.left
           }
-        case Right(_) => Left(OtherError("Duplicate bound variable"))
-        case Left(l) => Left(l)
-      }
+        }).sequenceU
+        environmentOverlay <- binds.asDistinct
+        newEnv <- environmentOverlay.foldLeft(e) {case (acc, (s, v)) => e.insert(s, v)}.right
+        evaled <- fromEither(body.eval(newEnv))
+      } yield evaled._2
+
+      result.map(expr => (e, expr)).toEither
     case bindings :: _ :: Nil => Left(TypeMismatch("list of lists", bindings.getClass.toString))
     case _ => Left(InvalidArgsNumber(2))
   }
 
   def lambda(e: Env, args: List[Expr]): Either[EvalError, (Env, Expr)] = args match {
     case (f@ListExpr(formals)) :: body :: Nil =>
-      val arguments = formals.map({
-        case Atom(x) => Right(x)
-        case a       => Left(TypeMismatch("atom", a.toString))
-      }).sequence
-
-      arguments match {
-        case Right(_) => Right((e, Lambda(f, body, e)))
-        case Left(l)  => Left(l)
-      }
+      import ImplicitUtils.Sequencable
+      for {
+        arguments <- formals.map({
+          case Atom(x) => Right(x)
+          case a       => Left(TypeMismatch("atom", a.toString))
+        }).sequence.right
+      } yield (e, Lambda(f, body, e))
     case DottedList(_, _) :: _ :: Nil => Left(NotImplemented("n or more arguments lambda"))
     case Atom(_) :: _ :: Nil => Left(NotImplemented("variable arity lambda"))
     case _ => Left(InvalidArgsNumber(2))
@@ -85,4 +75,14 @@ object Internal {
 
   def fst[A](a: (A, A)): A = a._1
   def snd[A](a: (A, A)): A = a._2
+
+  implicit class Distinct(l: List[(String, Expr)]) {
+    def asDistinct: \/[EvalError, List[(String, Expr)]] = {
+      val names = l map (_._1)
+      if (names.distinct == names)
+        l.right
+      else
+        OtherError("Duplicate bound variable").left
+    }
+  }
 }
