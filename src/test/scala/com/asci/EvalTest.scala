@@ -173,6 +173,12 @@ class EvalTest extends FlatSpec with Matchers {
     result.right.get._2 should equal (IntegerNum(55))
   }
 
+  it should "fail on applying too many args to a fixed arity FunWrap" in new EnvSupplier {
+    val result = eval(env, "(fst 1 2 3)")
+    result should not be an [Right[_,_]]
+    result.left.get shouldBe a [InvalidArgsNumber]
+  }
+
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {
     import com.asci.Parser
     import com.asci.Eval._

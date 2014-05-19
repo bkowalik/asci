@@ -2,20 +2,10 @@ package com.asci
 
 import com.asci.env.Env
 import com.asci.Expr._
-import com.asci.Expr.Atom
 import scala.Tuple1
 import scala.Some
-import com.asci.Expr.Lambda
-import com.asci.Constant.FloatingNum
-import com.asci.Expr.ExprFun
-import com.asci.Expr.FunWrap
-import com.asci.Expr.Quotation
-import com.asci.Expr.ListExpr
-import com.asci.Constant.BooleanConstant
-import com.asci.Constant.IntegerNum
-import com.asci.Constant.StringConstant
-import com.asci.Expr.Fixed
-import com.asci.env.Env.EnvMonoid
+import com.asci.Expr._
+import com.asci.Constant._
 import scalaz._
 import Scalaz._
 
@@ -58,6 +48,8 @@ object Eval {
                     } catch {
                       case e: EvalError => e.left
                     }
+                  case j =>
+                    InvalidArgsNumber(i).left
                 }
               case Variable =>
                 try {
@@ -78,7 +70,7 @@ object Eval {
               envWithArgs = vars.zip(args1).foldLeft(env) {
                 case (acc, (Atom(name), value)) => env.insert(name, value)
               }
-              finalEnv = EnvMonoid.append(envWithArgs, closure)
+              finalEnv = envWithArgs |+| closure
               result <- body.eval(finalEnv)
             } yield result._2
 
