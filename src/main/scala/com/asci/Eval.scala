@@ -76,6 +76,16 @@ object Eval {
 
             result.map(expr => (env, expr))
           case ListExpr(vars) => InvalidArgsNumber(vars.length).left
+          case Atom(variable) =>
+            val result: \/[EvalError, Expr] = for {
+              evaluatedArgs <- args.map(_.eval(env)).sequenceU
+              args1 = evaluatedArgs.map(_._2)
+              envWithArg = env.insert(variable, ListExpr(args1))
+              finalEnv = envWithArg |+| closure
+              result <- body.eval(finalEnv)
+            } yield result._2
+
+            result.map(expr => (env, expr))
         }
         case y => OtherError(s"$f is not a function").left
       }

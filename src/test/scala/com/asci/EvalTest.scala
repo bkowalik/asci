@@ -3,8 +3,7 @@ package com.asci
 import org.scalatest.{FlatSpec, Matchers}
 import com.asci.Constant._
 import com.asci.env.Env
-import com.asci.Expr.FunWrap
-import com.asci.Expr.Atom
+import com.asci.Expr.{ListExpr, FunWrap, Atom}
 import com.asci.Constant.IntegerNum
 import com.asci.Constant.StringConstant
 import com.asci.Constant.FloatingNum
@@ -177,6 +176,18 @@ class EvalTest extends FlatSpec with Matchers {
     val result = eval(env, "(fst 1 2 3)")
     result should not be an [Right[_,_]]
     result.left.get shouldBe a [InvalidArgsNumber]
+  }
+
+  it should "implement variable arity lambdas" in new EnvSupplier {
+    val result = eval(env, "((lambda x x) 1 2 3 4)")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal (ListExpr(List(IntegerNum(1), IntegerNum(2), IntegerNum(3), IntegerNum(4))))
+  }
+
+  it should "return empty list after applying variable arity id lambda to zero arguments" in new EnvSupplier {
+    val result = eval(env, "((lambda x x))")
+    result shouldBe a [Right[_,_]]
+    result.right.get._2 should equal (ListExpr(List()))
   }
 
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {

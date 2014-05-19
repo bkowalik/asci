@@ -9,7 +9,6 @@ import com.asci.InvalidArgsNumber
 import com.asci.OtherError
 import scalaz._
 import Scalaz._
-import scalaz.\/._
 
 object Internal {
   def define(e: Env, args: List[Expr]): \/[EvalError, (Env, Expr)] = args match {
@@ -65,7 +64,8 @@ object Internal {
         }).sequenceU
       } yield (e, Lambda(f, body, e))
     case DottedList(_, _) :: _ :: Nil => NotImplemented("n or more arguments lambda").left
-    case Atom(_) :: _ :: Nil => NotImplemented("variable arity lambda").left
+    case (a@Atom(_)) :: body :: Nil =>
+      (e, Lambda(a, body, e)).right
     case _ => InvalidArgsNumber(2).left
   }
 
