@@ -62,7 +62,7 @@ object Internal {
           case Atom(x) => x.right
           case a       => TypeMismatch("atom", a.toString).left
         }).sequenceU
-        _ <- arguments.asDistinct(foo => foo)
+        _ <- arguments.asDistinct()
       } yield (e, Lambda(f, body, e))
     case (f@DottedList(formals, formal)) :: body :: Nil =>
       for {
@@ -70,7 +70,7 @@ object Internal {
           case Atom(x) => x.right
           case a       => TypeMismatch("atom", a.toString).left
         }).sequenceU
-        _ <- arguments.asDistinct(foo => foo)
+        _ <- arguments.asDistinct()
       } yield (e, Lambda(f, body, e))
     case (a@Atom(_)) :: body :: Nil =>
       (e, Lambda(a, body, e)).right
@@ -81,7 +81,9 @@ object Internal {
   def snd[A](a: (A, A)): A = a._2
 
   implicit class Distinct[A](l: List[A]) {
-    def asDistinct[B](f: A => B): \/[EvalError, List[A]] = {
+    //                                        WTF Scala? I already specified it
+    //                                                   ↓
+    def asDistinct[B](f: (A => B) = (_.asInstanceOf[B]): A => B): \/[EvalError, List[A]] = {
       val names = l map f
       if (names.distinct == names)
         l.right
