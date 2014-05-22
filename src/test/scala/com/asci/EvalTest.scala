@@ -201,6 +201,26 @@ class EvalTest extends FlatSpec with Matchers {
     result should not be an [Right[_,_]]
   }
 
+  it should "check for a number" in new EnvSupplier {
+    val result = eval(env, "(number? 10)")
+    val result2 = eval(env, "(number? 3.4)")
+    val result3 = eval(env, "(number? \"foo\")")
+
+    result.right.get._2 should equal (BooleanConstant(true))
+    result2.right.get._2 should equal (BooleanConstant(true))
+    result3.right.get._2 should equal (BooleanConstant(false))
+  }
+
+  it should "check for a floating number" in new EnvSupplier {
+    val result = eval(env, "(real? 10)")
+    val result2 = eval(env, "(real? 3.4)")
+    val result3 = eval(env, "(real? \"foo\")")
+
+    result.right.get._2 should equal (BooleanConstant(false))
+    result2.right.get._2 should equal (BooleanConstant(true))
+    result3.right.get._2 should equal (BooleanConstant(false))
+  }
+
   //FIXME: test for InvalidArgsNumber for all types of lambdas
 
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {

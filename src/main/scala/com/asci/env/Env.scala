@@ -2,7 +2,7 @@ package com.asci.env
 
 import com.asci.Expr
 import com.asci.Expr.{ExprFun, Fixed, Variable, FunWrap}
-import com.asci.Constant.{StringConstant, Num}
+import com.asci.Constant.{FloatingNum, StringConstant, Num}
 import scalaz.Monoid
 
 case class Env(private val env: Map[String, Expr]) {
@@ -19,6 +19,7 @@ object Env {
   import primitives.Internal._
   import primitives.List._
   import primitives.Numeric._
+  import primitives.TypePredicates._
 
   lazy val r5rsEnv = Env(Map("+" -> FunWrap(add     [Num[Float], Float], Variable),
                              "-" -> FunWrap(subtract[Num[Float], Float], Variable),
@@ -35,6 +36,13 @@ object Env {
                              "if"     -> ExprFun(`if`),
                              "let"    -> ExprFun(let),
                              "lambda" -> ExprFun(lambda),
+
+                             "number?"  -> FunWrap(number[Expr], Fixed(1)),
+                             "real?"    -> FunWrap(real[Expr], Fixed(1)),
+                             "integer?" -> FunWrap(integer[Expr], Fixed(1)),
+                             "char?"    -> FunWrap(char[Expr], Fixed(1)),
+                             "string?"  -> FunWrap(string[Expr], Fixed(1)),
+                             "list?"    -> FunWrap(list[Expr], Fixed(1)),
 
 
                              // not really useful functions
