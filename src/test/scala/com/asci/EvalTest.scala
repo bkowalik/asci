@@ -221,6 +221,14 @@ class EvalTest extends FlatSpec with Matchers {
     result3.right.get._2 should equal (BooleanConstant(false))
   }
 
+  it should "check for equality" in new EnvSupplier {
+    val result = eval(env, "(eq? 2 3)")
+    val result2 = eval(env, "(eq? '(1 2 3) '(1 2 3))")
+
+    result.right.get._2 should equal (BooleanConstant(false))
+    result2.right.get._2 should equal (BooleanConstant(true))
+  }
+
   //FIXME: test for InvalidArgsNumber for all types of lambdas
 
   def eval(env: Env, scheme: String): Either[EvalError, (Env, Expr)] = {

@@ -20,6 +20,7 @@ object Env {
   import primitives.List._
   import primitives.Numeric._
   import primitives.TypePredicates._
+  import primitives.Eq._
 
   lazy val r5rsEnv = Env(Map("+" -> FunWrap(add     [Num[Float], Float], Variable),
                              "-" -> FunWrap(subtract[Num[Float], Float], Variable),
@@ -44,6 +45,10 @@ object Env {
                              "string?"  -> FunWrap(string[Expr], Fixed(1)),
                              "list?"    -> FunWrap(list[Expr], Fixed(1)),
 
+                             // FIXME: these functions should work on any number of args from 0 to inf
+                             "eq?"  -> FunWrap(equal[Expr], Fixed(2)),
+                             // FIXME: not a correct behaviour, but maybe we can get away with it
+                             "eqv?" -> FunWrap(equal[Expr], Fixed(2)),
 
                              // not really useful functions
                              "concat" -> FunWrap(concat[StringConstant], Variable),
