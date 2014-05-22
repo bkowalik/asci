@@ -1,7 +1,7 @@
 package com.asci.env.primitives
 
 import com.asci.Expr.{DottedList, ListExpr}
-import com.asci.{NotImplemented, TypeMismatch}
+import com.asci.{Expr, TypeMismatch}
 import com.asci.Constant.StringConstant
 
 object List {
@@ -11,9 +11,18 @@ object List {
     case _ => throw TypeMismatch("non-empty list", a.toString())
   }
 
-  def cdr[A](a: Tuple1[A]): A = throw NotImplemented("cdr")
+  def cdr[A](a: Tuple1[A]): A = a._1 match {
+    case ListExpr(_ :: tail) => ListExpr(tail).asInstanceOf[A]
+    case DottedList(_ :: tail, e) => DottedList(tail, e).asInstanceOf[A]
+    case DottedList(_ :: Nil, e) => e.asInstanceOf[A]
+    case _ => throw TypeMismatch("non-empty list", a.toString())
+  }
 
-  def cons[A](a: (A, A)): A = throw NotImplemented("cons")
+  def cons[A](a: (A, A)): A = a match {
+    case (foo, ListExpr(l)) => ListExpr(foo.asInstanceOf[Expr] :: l).asInstanceOf[A]
+    case (foo, DottedList(l, e)) => DottedList(foo.asInstanceOf[Expr] :: l, e).asInstanceOf[A]
+    case (foo, bar) => DottedList(List(foo.asInstanceOf[Expr]), bar.asInstanceOf[Expr]).asInstanceOf[A]
+  }
 
   def concat[A](a: (A, A)): A = a match {
     case (StringConstant(s1), StringConstant(s2)) => StringConstant(s1 + s2).asInstanceOf[A]
