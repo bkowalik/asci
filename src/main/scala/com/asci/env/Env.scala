@@ -29,9 +29,12 @@ object Env {
 
                              "<" -> FunWrap(<[Expr, Float], Fixed(2)),
 
-                             "car"  -> FunWrap(car [Expr], Fixed(1)),
-                             "cdr"  -> FunWrap(cdr [Expr], Fixed(1)),
-                             "cons" -> FunWrap(cons[Expr], Fixed(1)),
+                             "car"       -> FunWrap(car [Expr], Fixed(1)),
+                             "cdr"       -> FunWrap(cdr [Expr], Fixed(1)),
+                             "cons"      -> FunWrap(cons[Expr], Fixed(2)),
+                             // FIXME: this should really default second argument to '()
+                             // FIXME: not sure if this has to be a primitive
+                             "make-list" -> FunWrap(makeList[Expr], Fixed(2)),
 
                              "define" -> ExprFun(define),
                              "if"     -> ExprFun(`if`),
