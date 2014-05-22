@@ -18,9 +18,11 @@ case class Env(private val env: Map[String, Expr]) {
 object Env {
   import primitives.Internal._
   import primitives.List._
-  import primitives.Numeric._
+  import primitives.Numeric
+  import primitives.Numeric.{add, subtract, multiply, divide}
   import primitives.TypePredicates._
   import primitives.Eq._
+  import primitives.String
 
   lazy val r5rsEnv = Env(Map("+" -> FunWrap(add     [Num[Float], Float], Variable),
                              "-" -> FunWrap(subtract[Num[Float], Float], Variable),
@@ -28,12 +30,23 @@ object Env {
                              "/" -> FunWrap(divide  [Num[Float], Float], Variable),
 
                              // FIXME: should be varargs
-                             "<"  -> FunWrap(<[Expr, Float], Fixed(2)),
-                             "<=" -> FunWrap(<=[Expr, Float], Fixed(2)),
-                             "="  -> FunWrap(=?[Expr, Float], Fixed(2)),
-                             ">"  -> FunWrap(>[Expr, Float], Fixed(2)),
-                             ">=" -> FunWrap(>=[Expr, Float], Fixed(2)),
+                             "<"  -> FunWrap(Numeric.<[Expr, Float], Fixed(2)),
+                             "<=" -> FunWrap(Numeric.<=[Expr, Float], Fixed(2)),
+                             "="  -> FunWrap(Numeric.=?[Expr, Float], Fixed(2)),
+                             ">"  -> FunWrap(Numeric.>[Expr, Float], Fixed(2)),
+                             ">=" -> FunWrap(Numeric.>=[Expr, Float], Fixed(2)),
 
+                             // FIXME: should be varargs
+                             "string=?"     -> FunWrap(String.=?[StringConstant], Fixed(2)),
+                             "string>?"     -> FunWrap(String.>[StringConstant], Fixed(2)),
+                             "string>=?"    -> FunWrap(String.>=[StringConstant], Fixed(2)),
+                             "string<?"     -> FunWrap(String.<[StringConstant], Fixed(2)),
+                             "string<=?"    -> FunWrap(String.<=[StringConstant], Fixed(2)),
+                             "string-ci=?"  -> FunWrap(String.=?#[StringConstant], Fixed(2)),
+                             "string-ci>?"  -> FunWrap(String.>#[StringConstant], Fixed(2)),
+                             "string-ci>=?" -> FunWrap(String.>=#[StringConstant], Fixed(2)),
+                             "string-ci<?"  -> FunWrap(String.<#[StringConstant], Fixed(2)),
+                             "string-ci<=?" -> FunWrap(String.<=#[StringConstant], Fixed(2)),
 
                              "car"       -> FunWrap(car [Expr], Fixed(1)),
                              "cdr"       -> FunWrap(cdr [Expr], Fixed(1)),
