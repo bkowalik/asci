@@ -23,4 +23,21 @@ object Numeric {
   def <[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
     case (b: Num[T], c: Num[T]) => Expr(f.lt(Num.float(b).asInstanceOf[T], Num.float(c).asInstanceOf[T])).asInstanceOf[A]
   }
+
+  def <=[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
+    case (b: Num[T], c: Num[T]) => Expr(f.lteq(Num.float(b).asInstanceOf[T], Num.float(c).asInstanceOf[T])).asInstanceOf[A]
+  }
+
+  def =?[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
+    case (b: Num[T], c: Num[T]) => Expr(f.equiv(Num.float(b).asInstanceOf[T], Num.float(c).asInstanceOf[T])).asInstanceOf[A]
+  }
+
+  def >[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
+    case (b: Num[T], c: Num[T]) => Expr(f.gt(Num.float(b).asInstanceOf[T], Num.float(c).asInstanceOf[T])).asInstanceOf[A]
+  }
+
+  def >=[A, T](a: (A, A))(implicit f: Numeric[T]): A = a match {
+    case (b: Num[T], c: Num[T]) => Expr(f.gteq(Num.float(b).asInstanceOf[T], Num.float(c).asInstanceOf[T])).asInstanceOf[A]
+  }
+
 }

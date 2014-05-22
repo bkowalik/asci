@@ -27,7 +27,13 @@ object Env {
                              "*" -> FunWrap(multiply[Num[Float], Float], Variable),
                              "/" -> FunWrap(divide  [Num[Float], Float], Variable),
 
-                             "<" -> FunWrap(<[Expr, Float], Fixed(2)),
+                             // FIXME: should be varargs
+                             "<"  -> FunWrap(<[Expr, Float], Fixed(2)),
+                             "<=" -> FunWrap(<=[Expr, Float], Fixed(2)),
+                             "="  -> FunWrap(=?[Expr, Float], Fixed(2)),
+                             ">"  -> FunWrap(>[Expr, Float], Fixed(2)),
+                             ">=" -> FunWrap(>=[Expr, Float], Fixed(2)),
+
 
                              "car"       -> FunWrap(car [Expr], Fixed(1)),
                              "cdr"       -> FunWrap(cdr [Expr], Fixed(1)),
@@ -49,8 +55,8 @@ object Env {
                              "list?"    -> FunWrap(list[Expr], Fixed(1)),
 
                              // FIXME: these functions should work on any number of args from 0 to inf
-                             "eq?"  -> FunWrap(equal[Expr], Fixed(2)),
                              // FIXME: not a correct behaviour, but maybe we can get away with it
+                             "eq?"  -> FunWrap(equal[Expr], Fixed(2)),
                              "eqv?" -> FunWrap(equal[Expr], Fixed(2)),
 
                              // not really useful functions
