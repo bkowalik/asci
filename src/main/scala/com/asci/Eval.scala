@@ -26,6 +26,7 @@ object Eval {
         case Some(exp) => (env, exp).right
         case None      => UnboundVariable(a).left
       }
+      case c@CharacterConstant(_) => (env, c).right
       case _ => NotImplemented("foo").left
     }
 
@@ -68,7 +69,7 @@ object Eval {
               evaluatedArgs <- args.map(_.eval(env)).sequenceU
               args1 = evaluatedArgs.map(_._2)
               envWithVars = vars.zip(args1).foldLeft(env) {
-                case (acc, (Atom(name), value)) => env.insert(name, value)
+                case (acc, (Atom(name), value)) => acc.insert(name, value)
               }
               finalEnv = envWithVars |+| closure
               result <- body.eval(finalEnv)
